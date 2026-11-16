@@ -1,0 +1,588 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   EXCESS LOOK - iOS KIT v2.9 - STYLES
+   v2.9 (2026-10-13): no rule animates `all` - each names what it changes
+   (toast, filter chips, tile size buttons, small nav title). `all` makes the
+   browser watch every property, layout ones included; the app dropped it in
+   S19iv and the pay page in P19cz, so this copy no longer brings it back.
+   Pair with ios-kit-v2.9.js. Paste into every lab inside one <style> block.
+   Change it HERE, then re-paste. Never edit a copy in place.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── tokens ─────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#0A0A0C;--bg2:#121216;--bg3:#1A1A20;
+  --glass:rgba(22,22,28,.62);--glass-hi:rgba(30,30,38,.86);
+  --hair:rgba(255,255,255,.08);--hair-hi:rgba(255,255,255,.16);
+  --gold:#C8A951;--gold-2:#E0C77A;--gold-soft:rgba(200,169,81,.16);--gold-glow:rgba(200,169,81,.35);
+  --white:#F5F5F7;--muted:#8E8E97;--dim:#5A5A63;
+  --red:#E5484D;--green:#39C27C;--amber:#E8A33D;--blue:#5B8DEF;
+  --ff:'Montserrat',-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+  --fd:'Bebas Neue','Montserrat',sans-serif;
+  /* No third face. Bebas for display, Montserrat for everything else.
+     Numbers that must align use font-variant-numeric:tabular-nums, which
+     keeps digit widths equal WITHOUT changing the typeface. A monospace
+     stack resolves to a different font on every platform - SF Mono on a Mac,
+     Consolas on Windows - so it can never look intentional. */
+  --spring:cubic-bezier(.32,1.4,.42,1);--decel:cubic-bezier(.22,.9,.3,1);--ease:cubic-bezier(.4,0,.2,1);
+}
+/* Fonts: load in <head> of every lab -
+   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet"> */
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* A button does NOT inherit colour or font from its parent - the browser
+   gives it black text in its own UI font. Every button that forgets to set
+   colour renders black on a dark background, which is invisible. This is the
+   single most common way a dark theme breaks, so it is fixed once here. */
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;line-height:inherit}
+button{background:none;border:none;cursor:pointer}
+body{font-family:var(--ff);background:var(--bg);color:var(--white);
+  -webkit-font-smoothing:antialiased;font-feature-settings:'kern' 1,'liga' 1;text-rendering:optimizeLegibility}
+body.rm *{transition-duration:.01ms!important;animation-duration:.01ms!important}
+@media(prefers-reduced-transparency:reduce){
+  .xl-menu,.xl-dlg,.xl-toast,.sheet,.nav,.tabbar{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:#16161C!important}
+}
+
+/* ── scrollbars - themed everywhere, never native ───────────────────────── */
+*{scrollbar-width:thin;scrollbar-color:rgba(200,169,81,.35) transparent}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(200,169,81,.32);border-radius:4px;border:2px solid transparent;background-clip:padding-box;transition:background .3s}
+::-webkit-scrollbar-thumb:hover{background:rgba(200,169,81,.7);background-clip:padding-box}
+
+/* ── THE LOGO ────────────────────────────────────────────────────────────
+   The gold Excess Look logo is an IMAGE and only ever an image. There is no
+   text version of the wordmark - not on a page, not in an email, not in a
+   PDF. Any "EXCESS LOOK" set in type is a bug.
+   src: https://static.wixstatic.com/media/ca3f28_d2ad9fca894a4bf5934cdc30a498c2c2~mv2.png   */
+.xl-logo{display:block;width:auto;height:44px;object-fit:contain;object-position:left center}
+.xl-logo[data-failed="1"]{visibility:hidden}
+.xl-logo-slot{display:flex;align-items:center;min-height:44px}
+.xl-logo.sm{height:30px}
+.xl-logo.lg{height:58px}
+
+/* ── typography ─────────────────────────────────────────────────────────── */
+.xl-title{font-family:var(--fd);font-size:36px;letter-spacing:2.5px;line-height:1}
+.xl-title span,.xl-h2 span{color:var(--gold)}
+.xl-h2{font-family:var(--fd);font-size:17px;letter-spacing:2px;color:var(--gold);margin:20px 2px 9px;display:flex;align-items:center;gap:10px}
+.xl-h2 .ln{flex:1;height:1px;background:var(--hair)}
+.xl-hint{font-size:12px;font-weight:500;color:var(--muted);margin:-2px 2px 10px;line-height:1.5}
+.xl-num{font-variant-numeric:tabular-nums}
+/* ── EDGE-BLEED SCROLLER ────────────────────────────────────────────────
+   A horizontal row of chips must run to the SCREEN edge, not stop inside the
+   page padding. Stopping short makes the last chip look broken rather than
+   scrollable. The row is pulled out by the page gutter, padded back in, given
+   momentum scrolling, snap points and a fade at each end that appears only
+   when there is more to see. Set --gut to the page's horizontal padding. */
+.xl-hscroll{--gut:16px;
+  display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  margin-bottom:14px;
+  /* Dragging must scroll, not select the chip labels. */
+  user-select:none;-webkit-user-select:none;cursor:grab;
+  margin-left:calc(var(--gut) * -1);margin-right:calc(var(--gut) * -1);
+  padding-left:var(--gut);padding-right:var(--gut);
+  scrollbar-width:none;scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+.xl-hscroll::-webkit-scrollbar{display:none}
+.xl-hscroll>*{flex:none;scroll-snap-align:start}
+.xl-hscroll.dragging{cursor:grabbing;scroll-snap-type:none}
+.xl-hscroll:focus-visible{outline:2px solid rgba(200,169,81,.5);outline-offset:3px;border-radius:19px}
+/* Desktop gets a thin scrollbar on hover - a row with no visible affordance
+   reads as static. Touch keeps none. */
+@media (hover:hover){
+  /* The arrows sit BESIDE the row, not over it. An absolutely positioned
+     arrow floats above the scroller, so chips travel underneath it however
+     the ends are padded - the only certain fix is to take the arrows out of
+     the scrolling area entirely. The wrapper becomes a flex row:
+     [arrow][scroller][arrow]. Nothing can ever be covered. */
+  .xl-hs-wrap{display:flex;align-items:center;gap:4px;margin-bottom:14px;
+    margin-left:calc(var(--gut,16px) * -1);margin-right:calc(var(--gut,16px) * -1);
+    padding-left:4px;padding-right:4px}
+  .xl-hs-wrap>.xl-hscroll{flex:1;min-width:0;margin-left:0;margin-right:0;margin-bottom:0;
+    padding-left:6px;padding-right:6px;
+    scroll-padding-left:6px;scroll-padding-right:6px;
+    padding-bottom:0;--fade:88px}
+  .xl-hs-arrow{position:static;transform:none;flex:none;order:0}
+  .xl-hs-arrow.r{order:9}
+  /* When nothing overflows the arrows are gone, so the row reclaims the space
+     and sits flush with the page gutter again. */
+  .xl-hs-wrap:has(.no-arrows){padding-left:0;padding-right:0}
+  .xl-hs-wrap>.xl-hscroll.no-arrows{padding-left:var(--gut);padding-right:var(--gut);
+    scroll-padding-left:var(--gut);scroll-padding-right:var(--gut);--fade:44px}
+  /* No scrollbar. The arrows and the edge fade are the affordance, and a
+     3px bar under the chips only adds noise. */
+  .xl-hscroll::-webkit-scrollbar{display:none}
+  .xl-hscroll{scrollbar-width:none}
+}
+/* The fade is a mask so it works over any background. */
+/* --fade is wider than the arrow (28px + its 6px offset) so a chip dissolves
+   UNDERNEATH the arrow instead of colliding with its edge. On touch, where
+   there are no arrows, a narrower fade is enough to hint at more content. */
+/* Chips at the edges fade out; the middle of the row is fully legible. The
+   fade is a soft ramp rather than a hard cut, so a chip dims as it travels
+   out rather than vanishing at a line. */
+.xl-hscroll{--fade:96px}
+@media (hover:none){.xl-hscroll{--fade:56px}}
+.xl-hscroll.fade-r{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - var(--fade)),
+  rgba(0,0,0,.55) calc(100% - var(--fade) * .62),rgba(0,0,0,.18) calc(100% - var(--fade) * .26),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - var(--fade)),
+  rgba(0,0,0,.55) calc(100% - var(--fade) * .62),rgba(0,0,0,.18) calc(100% - var(--fade) * .26),transparent 100%)}
+.xl-hscroll.fade-l{-webkit-mask-image:linear-gradient(90deg,transparent 0,
+  rgba(0,0,0,.18) calc(var(--fade) * .26),rgba(0,0,0,.55) calc(var(--fade) * .62),#000 var(--fade),#000 100%);
+  mask-image:linear-gradient(90deg,transparent 0,
+  rgba(0,0,0,.18) calc(var(--fade) * .26),rgba(0,0,0,.55) calc(var(--fade) * .62),#000 var(--fade),#000 100%)}
+.xl-hscroll.fade-b{-webkit-mask-image:linear-gradient(90deg,transparent 0,
+  rgba(0,0,0,.18) calc(var(--fade) * .26),rgba(0,0,0,.55) calc(var(--fade) * .62),#000 var(--fade),
+  #000 calc(100% - var(--fade)),rgba(0,0,0,.55) calc(100% - var(--fade) * .62),rgba(0,0,0,.18) calc(100% - var(--fade) * .26),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,
+  rgba(0,0,0,.18) calc(var(--fade) * .26),rgba(0,0,0,.55) calc(var(--fade) * .62),#000 var(--fade),
+  #000 calc(100% - var(--fade)),rgba(0,0,0,.55) calc(100% - var(--fade) * .62),rgba(0,0,0,.18) calc(100% - var(--fade) * .26),transparent 100%)}
+
+/* ── INSET GROUPED LIST ─────────────────────────────────────────────────
+   The iOS shape for showing facts and choices: a small grey header ABOVE the
+   group, a rounded container, hairlines inset from the left, label left and
+   value right. Use this rather than a titled card when the content is a list
+   of facts. Cards stay right for dashboards and summaries. */
+.xl-field-err{font-size:12.5px;font-weight:600;color:var(--red);margin-top:8px;min-height:16px;display:none}
+.xl-field-err.on{display:block}
+.xl-f input.bad,.big-in.bad{border-color:var(--red)!important;box-shadow:0 0 0 3px rgba(229,72,77,.14)}
+.xl-grp-h{font-size:11.5px;font-weight:600;letter-spacing:.2px;color:var(--muted);padding:0 4px 7px}
+.xl-grp{border-radius:13px;overflow:hidden;background:rgba(255,255,255,.045);margin-bottom:20px}
+.xl-gr{display:flex;align-items:center;gap:12px;padding:13px 15px;position:relative;min-height:48px;
+  width:100%;text-align:left;color:var(--white);font-family:var(--ff);background:none;border:none}
+.xl-gr+.xl-gr::before{content:'';position:absolute;top:0;left:15px;right:0;height:1px;background:rgba(255,255,255,.08)}
+.xl-gr.tap{cursor:pointer;transition:background .18s}
+.xl-gr.tap:active{background:rgba(255,255,255,.06)}
+.xl-gr .lbl{font-size:15px;font-weight:400}
+.xl-gr .val{margin-left:auto;font-size:15px;font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
+.xl-gr .val.strong{color:var(--white);font-weight:600}
+.xl-gr .ic{width:32px;height:32px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;
+  background:var(--gold-soft)}
+.xl-gr .ic svg{width:17px;height:17px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.xl-gr .chev{width:14px;height:14px;flex:none;stroke:var(--dim);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.xl-gr .miss{color:var(--amber)}
+.xl-gr.done .ic{background:rgba(57,194,124,.14)}
+.xl-gr.done .ic svg{stroke:var(--green)}
+.xl-gr.done .s{color:var(--green)}
+
+/* ── AMOUNT HERO ────────────────────────────────────────────────────────
+   On a screen about a number, that number leads: large, centred, near the
+   top, with its context beneath. Springs when it changes. */
+.xl-hero{text-align:center;padding:18px 0 22px}
+.xl-hero .lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.xl-hero .amt{font-family:var(--fd);font-size:62px;letter-spacing:1px;line-height:.94;color:var(--white);
+  margin-top:8px;font-variant-numeric:tabular-nums;transition:transform .34s var(--spring)}
+.xl-hero .amt.bump{transform:scale(1.05)}
+.xl-hero .who{font-size:13px;font-weight:500;color:var(--muted);margin-top:10px}
+.xl-hero .note{font-size:12.5px;font-weight:600;color:var(--gold);margin-top:6px;height:17px;
+  opacity:0;transition:opacity .3s}
+.xl-hero .note.on{opacity:1}
+
+/* ── SEGMENTED CONTROL ──────────────────────────────────────────────────
+   For picking ONE of a few, where the options are short. */
+.xl-seg{display:flex;background:rgba(255,255,255,.06);border-radius:11px;padding:3px;gap:2px}
+.xl-seg button{flex:1;padding:10px 4px;border-radius:9px;font-family:var(--ff);font-size:13.5px;font-weight:600;
+  color:var(--muted);background:none;border:none;cursor:pointer;
+  transition:background .26s var(--ease),color .2s,transform .2s var(--spring)}
+.xl-seg button:active{transform:scale(.94)}
+.xl-seg button.on{background:rgba(255,255,255,.14);color:var(--white);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+
+/* ── VISIBILITY GATING ──────────────────────────────────────────────────
+   The pay page serves customers and staff from one file. These mirror the
+   real classes - never rename them when porting. */
+body.xl-customer .employee-only-payment{display:none!important}
+body.xl-employee .customer-only-payment{display:none!important}
+
+/* ── LIST ROW BLOCKS ─────────────────────────────────────────────────────
+   A row has two stacked blocks: the title block on the left and the value
+   block on the right. BOTH are columns. Inline spans run their two lines
+   together into one string - the mistake that produced "Add a tipRecord a
+   Cash..." and "$875DUE". Use these instead of styling spans by hand. */
+.xl-row-txt{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.xl-row-txt .t{display:block;font-size:15.5px;font-weight:600;letter-spacing:-.1px;color:var(--white);line-height:1.2}
+.xl-row-txt .s{display:block;font-size:12.5px;font-weight:400;color:var(--muted);line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xl-row-val{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+/* Centred variant - a quantity over its unit, a count over its label. Same
+   rule: text-align is not stacking, only flex-direction:column is. */
+.xl-row-val.mid{align-items:center;text-align:center}
+.xl-row-val .v{display:block;font-family:var(--fd);font-size:22px;letter-spacing:1px;line-height:1;
+  color:var(--gold);font-variant-numeric:tabular-nums}
+.xl-row-val .l{display:block;font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--muted);line-height:1}
+
+/* Identifiers - invoice numbers, WO numbers, clock times. Same face as the
+   rest of the app, just tighter and with even digit widths. */
+.xl-id{font-family:var(--ff);font-size:11px;font-weight:700;letter-spacing:.3px;
+  font-variant-numeric:tabular-nums;color:var(--gold)}
+
+/* ── press feedback - applied by XLKit.pressAll() ───────────────────────── */
+.press{transition:transform .22s var(--spring),filter .15s}
+.press:active{transform:scale(.96);filter:brightness(1.16)}
+
+/* ── rubber band wrapper ────────────────────────────────────────────────── */
+.xl-rb{will-change:transform}
+
+/* ── buttons ────────────────────────────────────────────────────────────── */
+.xl-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 17px;border-radius:13px;
+  font-family:var(--ff);font-size:11.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;
+  border:none;cursor:pointer;white-space:nowrap;color:var(--white)}
+.xl-btn.gold{background:linear-gradient(135deg,var(--gold-2),var(--gold));color:#141410;box-shadow:0 6px 20px var(--gold-glow),inset 0 1px 0 rgba(255,255,255,.35)}
+.xl-btn.ghost{background:var(--bg3);border:1px solid var(--hair)}
+.xl-btn.danger{background:rgba(229,72,77,.14);border:1px solid rgba(229,72,77,.4);color:var(--red)}
+.xl-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.xl-input{width:100%;font-family:var(--ff);font-size:15px;padding:11px 13px;border-radius:11px;
+  background:var(--bg3);border:1px solid var(--hair);color:var(--white);outline:none;margin-top:10px;transition:border-color .2s}
+.xl-input:focus{border-color:var(--gold)}
+.xl-textarea{resize:vertical;min-height:104px;line-height:1.6;font-size:14px;text-align:left}
+.xl-prompt-count{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--gold);margin-top:8px;text-align:left}
+.xl-dlg .xl-btn[disabled]{opacity:.45;pointer-events:none}
+
+/* ── glass surface ──────────────────────────────────────────────────────── */
+.xl-glass{background:var(--glass);border:1px solid var(--hair);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
+  box-shadow:inset 0 1px 0 var(--hair-hi)}
+
+/* ── toast ──────────────────────────────────────────────────────────────── */
+.xl-toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,26px);z-index:70;
+  display:flex;align-items:center;gap:12px;padding:12px 16px 12px 12px;border-radius:16px;min-width:230px;max-width:92vw;
+  background:var(--glass-hi);border:1px solid var(--hair-hi);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 12px 40px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:transform .45s var(--spring),opacity .45s var(--spring)}
+.xl-toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.xl-toast .tic{width:30px;height:30px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--gold-soft)}
+.xl-toast .tic svg{width:16px;height:16px;stroke:var(--gold);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.xl-toast .tt{font-size:13px;font-weight:600;line-height:1.3}
+/* v1.8 - failure variant. Red icon well, red glyph, everything else identical
+   so a toast never changes shape between success and failure. */
+.xl-toast.error .tic{background:rgba(229,72,77,.16)}
+.xl-toast.error .tic svg{stroke:var(--red)}
+.xl-toast .tu{color:var(--gold);cursor:pointer;font-weight:800;letter-spacing:.6px;text-transform:uppercase;font-size:11.5px;margin-left:auto;padding-left:8px}
+
+/* ── dialog ─────────────────────────────────────────────────────────────── */
+.xl-dlg-veil{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .3s var(--ease)}
+.xl-dlg-veil.on{opacity:1;pointer-events:auto}
+.xl-dlg{position:fixed;left:50%;top:50%;z-index:81;width:min(92vw,360px);padding:26px 22px 20px;border-radius:22px;text-align:center;
+  background:linear-gradient(180deg,rgba(30,30,38,.96),rgba(18,18,24,.98));border:1px solid var(--hair-hi);
+  -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 30px 80px rgba(0,0,0,.65);
+  transform:translate(-50%,-50%) scale(.82);opacity:0;pointer-events:none;
+  transition:transform .42s var(--spring),opacity .22s}
+.xl-dlg.on{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+.xl-dlg-ic{width:52px;height:52px;border-radius:16px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;
+  background:var(--gold-soft);border:1px solid rgba(200,169,81,.3)}
+.xl-dlg-ic.danger{background:rgba(229,72,77,.14);border-color:rgba(229,72,77,.3)}
+.xl-dlg-ic svg{width:24px;height:24px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.xl-dlg-ic.danger svg{stroke:var(--red)}
+.xl-dlg-t{font-family:var(--fd);font-size:24px;letter-spacing:2px;color:var(--white)}
+.xl-dlg-t span{color:var(--gold)}
+.xl-dlg-b{font-size:13px;font-weight:500;color:var(--muted);line-height:1.6;margin:8px 0 18px}
+.xl-dlg-btns{display:flex;gap:9px}.xl-dlg-btns .xl-btn{flex:1}
+
+/* ── context menu - pressed element stays SHARP above the blur ──────────── */
+.xl-menu-veil{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.32);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity .28s}
+.xl-menu-veil.on{opacity:1;pointer-events:auto}
+.xl-lifted{position:relative;z-index:52;background:rgba(30,30,38,.98)!important;
+  box-shadow:0 22px 60px rgba(0,0,0,.6),0 0 0 1px rgba(200,169,81,.28)!important;transform:scale(1.02)}
+.xl-menu{position:fixed;z-index:53;min-width:238px;border-radius:15px;overflow:hidden;
+  background:var(--glass-hi);border:1px solid var(--hair-hi);
+  -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 18px 50px rgba(0,0,0,.6);
+  transform:scale(.62);opacity:0;pointer-events:none;transition:transform .34s var(--spring),opacity .2s}
+.xl-menu.on{transform:scale(1);opacity:1;pointer-events:auto}
+.xl-menu button{display:flex;width:100%;align-items:center;gap:11px;padding:12px 15px;
+  font-family:var(--ff);font-size:14px;font-weight:600;background:none;border:none;border-bottom:1px solid var(--hair);
+  color:var(--white);cursor:pointer;text-align:left}
+.xl-menu button:last-child{border-bottom:none}
+.xl-menu button.red{color:var(--red)}
+.xl-menu button:active{background:rgba(255,255,255,.07)}
+.xl-menu svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.xl-menu-sep{height:6px;background:rgba(0,0,0,.35)}
+
+/* Held state on a tap-vs-hold control, so the hold is visible before the
+   menu arrives rather than feeling like nothing happened. */
+.xl-holding{background:var(--gold-soft)!important;border-color:rgba(200,169,81,.45)!important}
+
+/* ── sheet ──────────────────────────────────────────────────────────────── */
+.xl-veil{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .32s}
+.xl-veil.on{opacity:1;pointer-events:auto}
+.xl-sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;max-width:620px;margin:0 auto;
+  border-radius:26px 26px 0 0;padding:8px 20px calc(26px + env(safe-area-inset-bottom,0px));max-height:86vh;overflow-y:auto;
+  background:linear-gradient(180deg,rgba(28,28,36,.95),rgba(16,16,22,.98));
+  border:1px solid var(--hair-hi);border-bottom:none;
+  -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 -22px 64px rgba(0,0,0,.6);
+  transform:translateY(104%);transition:transform .5s var(--spring);will-change:transform}
+.xl-sheet.on{transform:translateY(0)}
+.xl-grabber{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);margin:6px auto 14px;touch-action:none;cursor:grab}
+
+/* ── PRESENTER - the same form as a sheet, a modal or a whole page ──────
+   The frame changes; the form inside it does not. Each presentation gets the
+   entrance it should have: a sheet rises, a modal springs from the centre, a
+   page slides in from the right like a push. */
+.xl-present{position:fixed;z-index:61;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(28,28,36,.95),rgba(16,16,22,.98));
+  border:1px solid var(--hair-hi);
+  -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 -22px 64px rgba(0,0,0,.6);
+  will-change:transform,opacity}
+.xl-present-head{flex:none;padding:8px 18px 0}
+.xl-present-bar{display:flex;align-items:center;gap:10px;min-height:42px}
+.xl-present-title{font-family:var(--fd);font-size:24px;letter-spacing:2px;flex:1;line-height:1}
+.xl-present-title span{color:var(--gold)}
+.xl-present-x,.xl-present-back{width:34px;height:34px;border-radius:17px;flex:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--hair)}
+.xl-present-back{order:-1}
+.xl-present-x svg,.xl-present-back svg{width:16px;height:16px;stroke:var(--white);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.xl-present-body{flex:1;overflow-y:auto;padding:8px 18px calc(24px + env(safe-area-inset-bottom,0px));overscroll-behavior:contain}
+
+/* sheet - rises from the bottom, drag the grabber to dismiss */
+.xl-present-sheet{left:0;right:0;bottom:0;max-width:640px;margin:0 auto;max-height:88vh;
+  border-radius:26px 26px 0 0;border-bottom:none;transform:translateY(104%);
+  transition:transform .5s var(--spring)}
+.xl-present-sheet.on{transform:translateY(0)}
+
+/* modal - springs from the centre */
+.xl-present-modal{left:50%;top:50%;width:min(94vw,640px);max-height:86vh;border-radius:22px;
+  transform:translate(-50%,-50%) scale(.9);opacity:0;
+  transition:transform .42s var(--spring),opacity .24s}
+.xl-present-modal.on{transform:translate(-50%,-50%) scale(1);opacity:1}
+
+/* page - a push from the right, the full screen */
+.xl-present-page{inset:0;width:100%;max-width:none;border-radius:0;border:none;
+  transform:translateX(100%);transition:transform .46s var(--decel)}
+.xl-present-page.on{transform:translateX(0)}
+.xl-present-page .xl-present-head{padding-top:calc(10px + env(safe-area-inset-top,0px));
+  border-bottom:1px solid var(--hair)}
+.xl-present-page .xl-present-body{max-width:660px;margin:0 auto;width:100%}
+.xl-veil-page{background:none;-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:none}
+
+@media(max-width:520px){
+  .xl-present-modal{width:94vw;max-height:90vh}
+  .xl-present-title{font-size:21px}
+  .xl-present-head{padding:8px 14px 0}
+  .xl-present-body{padding:8px 14px calc(20px + env(safe-area-inset-bottom,0px))}
+}
+
+/* ── disclosure ─────────────────────────────────────────────────────────── */
+.xl-disc{border-radius:16px;overflow:hidden;margin-bottom:9px}
+.xl-disc-h{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;font-size:14px;font-weight:700;user-select:none}
+.xl-disc-h .cnt{font-family:var(--fd);font-size:15px;letter-spacing:1px;color:var(--gold);margin-left:auto}
+.xl-disc-h .arr{width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:2.2;transition:transform .35s var(--spring)}
+.xl-disc.open .xl-disc-h .arr{transform:rotate(90deg)}
+.xl-disc-b{height:0;overflow:hidden;transition:height .38s var(--decel)}
+
+/* ── FORMS - fields, repeatable rows, photo, totals ─────────────────────
+   Every sheet form in the app uses these, so a service line looks the same
+   on Dan's page, the WO page and the account page.                         */
+.xl-f{margin-bottom:11px}
+.xl-f label{display:block;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.xl-f input,.xl-f select,.xl-f textarea{width:100%;font-family:var(--ff);font-size:15px;padding:11px 13px;border-radius:11px;
+  background:var(--bg3);border:1px solid var(--hair);color:var(--white);outline:none;transition:border-color .2s}
+.xl-f input:focus,.xl-f select:focus,.xl-f textarea:focus{border-color:var(--gold)}
+.xl-f input[readonly]{opacity:.65}
+.xl-row{display:flex;gap:10px}.xl-row .xl-f{flex:1;margin-bottom:0}
+.xl-narrow{width:78px;flex:none}
+.xl-add{margin-left:auto;font-family:var(--ff);font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--gold);background:var(--gold-soft);border:1px solid rgba(200,169,81,.35);border-radius:8px;padding:6px 10px;cursor:pointer}
+.xl-line{border-radius:14px;padding:12px;margin-bottom:9px;background:rgba(0,0,0,.28);border:1px solid var(--hair)}
+.xl-line-top{display:flex;gap:9px;align-items:flex-start}
+.xl-line-top .xl-f{flex:1;margin-bottom:0}
+.xl-x{width:30px;height:30px;flex:none;border-radius:9px;background:rgba(229,72,77,.12);border:1px solid rgba(229,72,77,.3);
+  color:var(--red);font-size:16px;line-height:1;cursor:pointer;font-family:var(--ff)}
+.xl-line-tot{display:flex;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:1px solid var(--hair);
+  font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.xl-line-tot b{font-family:var(--fd);font-size:17px;letter-spacing:1px;color:var(--gold)}
+.xl-photo{display:flex;align-items:center;gap:11px;padding:14px;border-radius:12px;cursor:pointer;
+  background:var(--bg3);border:1px dashed var(--hair-hi);color:var(--muted);font-size:13px;font-weight:600;
+  transition:border-color .25s,color .25s}
+.xl-photo:hover{border-color:var(--gold);color:var(--gold)}
+.xl-photo.has{border-style:solid;border-color:rgba(200,169,81,.4);color:var(--gold)}
+.xl-photo svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.xl-sum{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:13px 15px;border-radius:14px;
+  background:rgba(200,169,81,.09);border:1px solid rgba(200,169,81,.35);
+  font-size:11px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted)}
+.xl-sum b{font-family:var(--fd);font-size:24px;letter-spacing:1px;color:var(--gold)}
+
+/* ── SERVICE PICKER - the list shrinks as you type ─────────────────────── */
+.xl-sp{position:fixed;z-index:90;max-height:240px;overflow-y:auto;border-radius:14px;padding:5px;
+  background:var(--glass-hi);border:1px solid var(--hair-hi);
+  -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 18px 50px rgba(0,0,0,.6);
+  opacity:0;transform:scale(.94);pointer-events:none;
+  transition:opacity .2s var(--ease),transform .32s var(--spring)}
+.xl-sp.on{opacity:1;transform:scale(1);pointer-events:auto}
+.xl-sp-i{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:9px;border:none;background:none;
+  font-family:var(--ff);font-size:14px;font-weight:500;color:var(--white);cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s}
+.xl-sp-i b{color:var(--gold);font-weight:800}
+.xl-sp-i:hover,.xl-sp-i.on{background:var(--gold-soft)}
+.xl-sp-empty{padding:14px 12px;font-size:12px;color:var(--muted);line-height:1.5}
+.xl-sp-i.cur{background:rgba(200,169,81,.10)}
+.xl-sp-i.cur::after{content:'';width:6px;height:11px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);
+  transform:rotate(45deg);float:right;margin-top:2px}
+/* A picker field is a choice, not a text box - it reads as one. */
+.xl-sp-field{cursor:pointer;padding-right:34px!important;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E8E97' stroke-width='2.2' stroke-linecap='round'><polyline points='7,10 12,15 17,10'/></svg>");
+  background-repeat:no-repeat;background-size:15px;background-position:right 11px center}
+.xl-sp-field:focus{cursor:text}
+
+/* ── FORMS ON A PHONE ───────────────────────────────────────────────────
+   A paired row is a desktop convenience. Below 520px two fields sharing a
+   line leaves each too narrow to read a date, a time or a dollar amount, so
+   rows stack. The narrow helper keeps its width only where it still fits. */
+@media(max-width:520px){
+  .xl-row{flex-direction:column;gap:0}
+  .xl-row .xl-f{margin-bottom:11px;width:100%!important}
+  .xl-narrow{width:100%!important}
+  /* Qty next to a service name is still fine - it is two or three digits. */
+  .xl-row.keep{flex-direction:row;gap:9px}
+  .xl-row.keep .xl-f{margin-bottom:0}
+  .xl-row.keep .xl-narrow{width:96px!important;flex:none}
+  .xl-line{padding:11px}
+  .xl-line-top{flex-wrap:wrap}
+  .xl-line-top .xl-f{min-width:0}
+  .xl-sheet{padding:8px 14px calc(26px + env(safe-area-inset-bottom,0px))}
+  .xl-f input,.xl-f select,.xl-f textarea{font-size:16px}  /* 16px stops iOS zooming on focus */
+  .xl-sp{max-height:44vh}
+  .xl-dlg{width:min(94vw,360px);padding:22px 18px 18px}
+  .xl-btn{padding:13px 14px}
+}
+
+/* ── FILTER CHIPS - an alert that is not urgent becomes a chip with a count */
+.xl-chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.xl-chips::-webkit-scrollbar{display:none}
+.xl-chip{flex:none;display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:20px;
+  font-family:var(--ff);font-size:11.5px;font-weight:700;letter-spacing:.4px;
+  background:var(--bg3);border:1px solid var(--hair);color:var(--muted);cursor:pointer;
+  transition:background .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease),transform .22s var(--spring)}
+.xl-chip .c{font-family:var(--fd);font-size:14px;letter-spacing:.5px;line-height:1;color:var(--white);opacity:.85}
+.xl-chip.warn{border-color:rgba(232,163,61,.4)}
+.xl-chip.warn .c{color:var(--amber);opacity:1}
+.xl-chip.on{background:var(--gold-soft);border-color:rgba(200,169,81,.45);color:var(--gold)}
+.xl-chip.on .c{color:var(--gold)}
+.xl-chip.warn.on{background:rgba(232,163,61,.14);border-color:rgba(232,163,61,.5);color:var(--amber)}
+/* Multi-select: an active chip shows a tick so combining filters is obvious. */
+.xl-chip.on::before{content:'';width:0;height:9px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(-45deg) translate(1px,-2px);margin-right:2px;opacity:0;
+  transition:width .26s var(--spring),opacity .2s}
+.xl-chip.on:not([data-f="all"])::before{width:5px;opacity:1}
+
+/* ── LEAVING A LIST ─────────────────────────────────────────────────────
+   Paired with XLKit.dismiss. The row collapses its own height so the rows
+   below glide up rather than jumping into the gap. */
+.xl-leaving{transition:opacity .42s var(--ease),transform .5s var(--decel),margin .5s var(--decel),
+  max-height .5s var(--decel),padding .5s var(--decel)!important;
+  opacity:0!important;transform:translateX(38px) scale(.97)!important;
+  max-height:0!important;padding-top:0!important;padding-bottom:0!important;margin-bottom:0!important;overflow:hidden!important}
+/* The badge that reports a problem is the button that fixes it. */
+.xl-act{cursor:pointer;transition:transform .22s var(--spring),border-color .22s}
+.xl-act:active{transform:scale(.9)}
+.xl-act.urgent{animation:xlPulse 2.4s ease-in-out infinite}
+@keyframes xlPulse{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}50%{box-shadow:0 0 0 4px rgba(229,72,77,.12)}}
+body.rm .xl-act.urgent{animation:none}
+
+/* ── TILE SIZES + ARRANGE MODE ──────────────────────────────────────────
+   small 1x1, medium 2x1, large 2x2. Size is a per-user setting, so the same
+   grid serves someone who wants ten small tiles and someone who wants three
+   big ones. */
+.xl-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:92px;gap:9px}
+.s-small{grid-column:span 1;grid-row:span 1}
+.s-medium{grid-column:span 2;grid-row:span 1}
+.s-large{grid-column:span 2;grid-row:span 2}
+.s-small .m{display:none}
+.xl-grid.jiggle{user-select:none;-webkit-user-select:none}
+.xl-grid.jiggle > *{animation:xlJig .3s ease-in-out infinite alternate;cursor:grab;touch-action:none;-webkit-user-drag:none}
+.xl-grid.jiggle > *:nth-child(even){animation-delay:.1s}
+.xl-grid.jiggle .dragging{animation:none!important;cursor:grabbing;opacity:.94;
+  box-shadow:0 26px 60px rgba(0,0,0,.65),0 0 0 1px rgba(200,169,81,.4)}
+@keyframes xlJig{from{transform:rotate(-.9deg)}to{transform:rotate(.9deg)}}
+.xl-sizer{position:absolute;left:8px;bottom:8px;display:none;gap:3px;z-index:3}
+.xl-grid.jiggle .xl-sizer{display:flex}
+.xl-sz{width:24px;height:24px;border-radius:7px;border:1px solid var(--hair);background:rgba(0,0,0,.55);
+  color:var(--muted);font-family:var(--ff);font-size:9px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  transition:background .22s,border-color .22s,color .22s,transform .22s var(--spring)}
+.xl-sz.on{background:var(--gold);color:#141410;border-color:var(--gold)}
+.xl-sz:active{transform:scale(.86)}
+
+/* ── HORIZONTAL ROWS - reachable with a mouse, not only a finger ────────── */
+.xl-hs-wrap{position:relative}
+.xl-hs{cursor:grab;-webkit-mask-image:none}
+.xl-hs.xl-dragging{cursor:grabbing;scroll-behavior:auto}
+.xl-hs.fade-l{-webkit-mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.4) 24px,#000 56px);mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.4) 24px,#000 56px)}
+.xl-hs.fade-r{-webkit-mask-image:linear-gradient(270deg,transparent 0,#000 26px);mask-image:linear-gradient(270deg,transparent 0,#000 26px)}
+.xl-hs.fade-l.fade-r{-webkit-mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.4) 24px,#000 56px,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 24px),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.4) 24px,#000 56px,#000 calc(100% - 56px),rgba(0,0,0,.4) calc(100% - 24px),transparent 100%)}
+.xl-hs-arrow{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:14px;z-index:5;
+  display:none;align-items:center;justify-content:center;cursor:pointer;
+  background:rgba(30,30,38,.9);border:1px solid var(--hair-hi);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 4px 14px rgba(0,0,0,.5);
+  transition:opacity .25s,transform .25s var(--spring)}
+.xl-hs-arrow svg{width:14px;height:14px;stroke:var(--gold);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.xl-hs-arrow.l{left:2px}.xl-hs-arrow.r{right:2px}
+/* A flex arrow keeps its size when it is not shown, so it is removed from the
+   layout rather than just made transparent. */
+/* An arrow at its end is dimmed, NOT removed - removing it would change the
+   row's width mid-scroll and make the chips jump. Only a row with nothing to
+   scroll drops them entirely. */
+@media (hover:hover){
+  .xl-hs-wrap .xl-hs-arrow.off{opacity:.25;pointer-events:none;display:flex}
+  .xl-hs-wrap:not(.has-more) .xl-hs-arrow{display:none}
+}
+/* Arrows are a mouse affordance. A touch device scrolls with a finger and
+   does not need them taking up room over the chips. */
+@media (hover:none){.xl-hs-arrow{display:none!important}}
+.xl-hs-arrow:active{transform:translateY(-50%) scale(.88)}
+.xl-hs-arrow.off{opacity:0;pointer-events:none}
+/* Arrows are a pointer affordance - a touch device flicks instead. */
+@media (hover:hover) and (pointer:fine){
+  .xl-hs-wrap.has-more .xl-hs-arrow{display:flex}
+}
+
+/* ── FIXED BOTTOM BAR - chrome, never sticky; slims on scroll down ─────── */
+.xl-bar{position:fixed;left:0;right:0;bottom:0;z-index:40;max-width:620px;margin:0 auto;
+  padding:13px 18px calc(14px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:12px;
+  background:linear-gradient(0deg,rgba(10,10,12,.97),rgba(10,10,12,.8));
+  -webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);
+  border-top:1px solid var(--hair);transition:padding .35s var(--decel)}
+.xl-bar .bl{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);
+  transition:opacity .25s,height .3s var(--decel);height:13px;overflow:hidden}
+.xl-bar .bv{font-family:var(--fd);font-size:30px;letter-spacing:1px;color:var(--gold);line-height:1;
+  font-variant-numeric:tabular-nums;transition:font-size .35s var(--decel)}
+.xl-bar.mini{padding-top:9px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.xl-bar.mini .bl{opacity:0;height:0}
+.xl-bar.mini .bv{font-size:23px}
+.xl-bar .bb{margin-left:auto;display:flex;gap:8px}
+
+/* Cards only animate in on FIRST PAINT. If the rule stays attached, anything
+   touching the animation property replays it. */
+@keyframes xlIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.xl-in{animation:xlIn .5s var(--spring) backwards}
+
+/* ── chrome ─────────────────────────────────────────────────────────────── */
+.nav{position:sticky;top:0;z-index:30;
+  background:linear-gradient(180deg,rgba(10,10,12,.96),rgba(10,10,12,.72));
+  -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+  border-bottom:1px solid transparent;transition:border-color .3s}
+.nav.compact{border-bottom-color:var(--hair)}
+/* The large title lives in the SCROLLING CONTENT, never inside the sticky
+   bar. It scrolls away on its own, so no layout height ever animates and the
+   scroll position cannot oscillate across a threshold. */
+.nav-large{font-family:var(--fd);font-size:36px;letter-spacing:2.5px;line-height:1;padding:2px 0 10px;
+  transform-origin:left bottom;will-change:transform,opacity}
+.nav-small{font-family:var(--fd);font-size:18px;letter-spacing:2px;opacity:0;transform:translateY(6px);transition:opacity .28s var(--decel),transform .28s var(--decel)}
+.nav.compact .nav-small{opacity:1;transform:none}
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:44;display:flex;gap:2px;padding:6px;border-radius:28px;
+  background:rgba(30,30,38,.8);border:1px solid var(--hair-hi);
+  -webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 12px 40px rgba(0,0,0,.5);
+  transition:transform .45s var(--spring),padding .35s var(--decel)}
+.tabbar.mini{padding:4px}
+.tabbar.mini .tab span{opacity:0;height:0}
+.tabbar.mini .tab:not(.on){width:0;min-width:0;padding:8px 0;opacity:0;overflow:hidden}
+.search{overflow:hidden;height:0;opacity:0;transition:height .35s var(--decel),opacity .25s}
+.search.open{height:54px;opacity:1}

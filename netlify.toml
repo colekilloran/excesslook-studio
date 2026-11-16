@@ -1,0 +1,16 @@
+# Reel Studio - studio.excesslook.com
+# index.html is the studio page; netlify/functions holds the AI planner
+# (background, up to 15 min) and the small API.
+[build]
+  publish = "site"
+  command = "mkdir -p site && cp studio.html site/index.html"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "same-origin"

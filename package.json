@@ -1,0 +1,9 @@
+{
+  "name": "excesslook-studio",
+  "private": true,
+  "type": "module",
+  "description": "Reel Studio - Excess Look auto video editor",
+  "dependencies": {
+    "@netlify/blobs": ">=7.0.0"
+  }
+}
