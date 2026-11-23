@@ -117,5 +117,11 @@ check(29, /Keep it under 20 seconds/.test(t2) && /Before\/After, 2 shots/.test(t
 const bad = await C.handleApi({ method: 'POST', op: 'frames', query: { job: '../x', i: '50' }, body: {}, store, env });
 check(30, bad.status === 400, 'bad job id or index refused');
 
+// 31-32 SC1b - Cole's signed-off house style is in every request, ahead of his own rules
+check(31, C.CORE_BUILD === 'SC1b-2026-11-23-housestyle' && req2.system === C.EDITOR_BRIEF
+  && /Excess Look house style/.test(req2.system) && /Hook in the first second/.test(req2.system) && /10 to 25 seconds/.test(req2.system)
+  && /0\.7 to 2\.5 seconds/.test(req2.system) && /Flash transitions/.test(req2.system) && /Book now/.test(req2.system), 'the house style rides in the system brief of every request');
+check(32, req2.system.indexOf('house style') < req2.system.indexOf('Always follow the owner') && !/\u2014/.test(req2.system), 'the owner\'s own rules still come last and win; no em dashes in the brief');
+
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);

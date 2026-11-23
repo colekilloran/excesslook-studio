@@ -1,9 +1,9 @@
-// studio-core.mjs - Reel Studio server logic (SC1a-2026-11-16).
+// studio-core.mjs - Reel Studio server logic (SC1b-2026-11-23 - house style from Cole's reference reels).
 // Everything that matters lives here as plain functions that take their
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1a-2026-11-16-autoedit';
+export const CORE_BUILD = 'SC1b-2026-11-23-housestyle';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -74,13 +74,25 @@ export const EDITOR_BRIEF = [
   '- The first 1.5 seconds decide everything. Open on the single most striking moment: the finished reveal, a 50/50 paint-correction line, foam, water beading, a mirror reflection, a dramatic before. Never open on a wide static shot of a parking lot or a person standing.',
   '- Shots are short: usually 0.8 to 2.5 seconds. Hold the final reveal longer (2.5 to 4 seconds).',
   '- Build a story: problem or before -> process -> result. Process shots (polisher, foam cannon, coating application) are the middle; the clean result is the end.',
-  '- Total length 10 to 30 seconds unless the owner asks otherwise. Shorter beats longer. Never over 90 seconds.',
+  '- Total length 10 to 25 seconds unless the owner asks otherwise (see the house style). Shorter beats longer. Never over 90 seconds.',
   '- Skip anything blurry, dark, shaky, half-blocked, mid-transition, or a shot of the floor. Skip near-duplicates.',
   '- Use before/after (template ba) when the footage has a clear before and after of the same area; walk for a tour of a finished car; reveal for a single dramatic finished car.',
   '- A shot must lie inside one footage item: 0 <= in < out <= that item\'s length. Pick in/out between the sampled times you saw; motion between samples is fine.',
   '- Privacy: if a license plate is readable or a customer\'s face is visible in a shot, add a blur box over it (shop staff working on the car are fine).',
   '- Words: plain, confident, no hype words like "insane" unless the owner\'s rules use them. Use hyphens, never em dashes. US spelling.',
   '- The caption is written as the shop, first line is a hook, end with a short call to book (excesslook.com or DM).',
+  '',
+  '',
+  /* SC1b - Cole signed these off on 2026-11-23 ("im signing off on them now") after six reference
+     reels he likes were broken down shot by shot (claude/REEL-STYLE-RULES.md in the XSLook project). */
+  'Excess Look house style (the owner approved these from reels he likes - they come before the general advice above):',
+  '- Hook in the first second: a bold question or offer as the first text, or a dramatic dirty/clean flash. Never a slow opener.',
+  '- Length 10 to 25 seconds. Only a step-by-step process reel (prep -> application -> finished) may run up to about 40 seconds.',
+  '- Cut rhythm 0.7 to 2.5 seconds a shot. Hype and transformation reels cut fast and even, as if on the beat; process reels a little slower (about 2.5 seconds).',
+  '- Close-ups carry the reel: pad on paint, foam, mitt, brush, squeegee, water beading. Use a wide shot only to place the car or for the final reveal.',
+  '- Text: one idea at a time, short, bold, centered in the safe area. Caps for offers and prices. For a process reel, a short caption naming each step.',
+  '- End on the finished car, then a short call to book ("Book now"). When it fits, end on the same shot the reel opened with so it loops.',
+  '- Reel types that work for this shop - pick the one the footage supports: Flash transitions (the same angle dirty then clean, cut back and forth, best with template ba); Hook + proof (a question as the first text, then the close-ups that answer it); Single satisfying take (one long steady shot, no text, when the footage is one clean continuous move); Process with step captions + finished reveal + book now; Offer promo (rotating short offer text over fast foam / wash close-ups).',
   '',
   'Always follow the owner\'s rules below over these defaults. When the owner gave notes on a previous draft, apply every note.'
 ].join('\n');
