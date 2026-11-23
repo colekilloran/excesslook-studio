@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1b-2026-11-23-housestyle';
+export const CORE_BUILD = 'SC1c-2026-11-23-toolauto';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -155,10 +155,13 @@ export function buildRequest({ footage, style, prev, want, model }) {
   content.push({ type: 'text', text: task });
   return {
     model: model || DEFAULT_MODEL,
-    max_tokens: 4096,
+    max_tokens: 16000,
     system: EDITOR_BRIEF,
     tools: [PLAN_TOOL],
-    tool_choice: { type: 'tool', name: 'submit_edit' },
+    /* SC1c: newer models refuse a forced tool ("tool_choice: type tool and any are not supported for this
+       model" - Cole's first real run, 2026-11-23). Auto + the brief's "call submit_edit"; runPlan asks once
+       more if the reply has no edit in it. max_tokens raised for models that think before answering. */
+    tool_choice: { type: 'auto' },
     messages: [{ role: 'user', content }]
   };
 }
@@ -271,18 +274,34 @@ export async function runPlan({ body, store, fetchImpl, env }) {
     if (!footage.some(f => f.frames && f.frames.length)) throw new Error('No stills arrived for this job - try again');
     body = Object.assign({}, body, { footage });
     const req = buildRequest({ footage: body.footage, style, prev: body.prev, want: body.want, model: env.STUDIO_MODEL });
-    const res = await fetchImpl(API_URL, {
-      method: 'POST',
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify(req)
-    });
-    const txt = await res.text();
-    let data = null; try { data = JSON.parse(txt); } catch (e) {}
-    if (!res.ok) throw new Error('Claude API ' + res.status + ': ' + ((data && data.error && data.error.message) || txt.slice(0, 200)));
-    const use = (data.content || []).find(c => c.type === 'tool_use' && c.name === 'submit_edit');
+    const call = async r => {
+      const res = await fetchImpl(API_URL, {
+        method: 'POST',
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify(r)
+      });
+      const txt = await res.text();
+      let d = null; try { d = JSON.parse(txt); } catch (e) {}
+      if (!res.ok) throw new Error('Claude API ' + res.status + ': ' + ((d && d.error && d.error.message) || txt.slice(0, 200)));
+      return d || {};
+    };
+    const usage = { in: 0, out: 0 };
+    const pick = d => {
+      if (d.usage) { usage.in += d.usage.input_tokens || 0; usage.out += d.usage.output_tokens || 0; }
+      return (d.content || []).find(c => c.type === 'tool_use' && c.name === 'submit_edit');
+    };
+    let data = await call(req);
+    let use = pick(data);
+    if (!use) {
+      // The tool is not forced (SC1c): if the reply came back without an edit, hand it back and ask once.
+      const again = Object.assign({}, req, { messages: req.messages.concat(
+        { role: 'assistant', content: (data.content && data.content.length) ? data.content : [{ type: 'text', text: '(no reply)' }] },
+        { role: 'user', content: [{ type: 'text', text: 'Call submit_edit now with your edit of this reel. Reply with the tool call only.' }] }) });
+      data = await call(again);
+      use = pick(data);
+    }
     if (!use) throw new Error('The editor did not return an edit');
     const plan = validatePlan(use.input, body.footage);
-    const usage = data.usage ? { in: data.usage.input_tokens || 0, out: data.usage.output_tokens || 0 } : null;
     await store.setJSON(id, { status: 'done', started, finished: new Date().toISOString(), plan, usage, model: req.model, core: CORE_BUILD });
     await dropFrames(store, body.job, meta.length);
     return { ok: true, plan };

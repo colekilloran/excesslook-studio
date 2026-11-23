@@ -36,7 +36,7 @@ const text = content.filter(c => c.type === 'text').map(c => c.text).join('\n');
 check(4, imgs.length === 4 && imgs.every(i => i.source.media_type === 'image/jpeg'), 'four good stills sent, the non-image string dropped (' + imgs.length + ')');
 check(5, /F1 @ 1\.0s/.test(text) && /F3 - IMG_3\.JPG - photo/.test(text) && /landscape 1920x1080/.test(text), 'every still labeled with footage and time');
 check(6, /Open on the finished car/.test(text) && /Reveal, 6 shots/.test(text) && /Cut faster/.test(text) && /Keep it short/.test(text) && /Use the walk template/.test(text), 'rules, approved examples, notes on the last draft and the ask are all in');
-check(7, req.tool_choice.name === 'submit_edit' && req.tools[0].name === 'submit_edit' && req.model === C.DEFAULT_MODEL, 'edit tool forced, default model ' + req.model);
+check(7, req.tool_choice.type === 'auto' && !req.tool_choice.name && req.tools[0].name === 'submit_edit' && req.model === C.DEFAULT_MODEL, 'edit tool offered, not forced (SC1c), default model ' + req.model);
 check(8, C.buildRequest({ footage, model: 'claude-opus-5-5' }).model === 'claude-opus-5-5', 'STUDIO_MODEL overrides the model');
 
 // 9-14 plan validation
@@ -118,10 +118,38 @@ const bad = await C.handleApi({ method: 'POST', op: 'frames', query: { job: '../
 check(30, bad.status === 400, 'bad job id or index refused');
 
 // 31-32 SC1b - Cole's signed-off house style is in every request, ahead of his own rules
-check(31, C.CORE_BUILD === 'SC1b-2026-11-23-housestyle' && req2.system === C.EDITOR_BRIEF
+check(31, /^SC1[b-z]-/.test(C.CORE_BUILD) && req2.system === C.EDITOR_BRIEF
   && /Excess Look house style/.test(req2.system) && /Hook in the first second/.test(req2.system) && /10 to 25 seconds/.test(req2.system)
   && /0\.7 to 2\.5 seconds/.test(req2.system) && /Flash transitions/.test(req2.system) && /Book now/.test(req2.system), 'the house style rides in the system brief of every request');
 check(32, req2.system.indexOf('house style') < req2.system.indexOf('Always follow the owner') && !/\u2014/.test(req2.system), 'the owner\'s own rules still come last and win; no em dashes in the brief');
+
+// 33-35 SC1c - the API refuses a forced tool on newer models, so the request never forces one; a reply
+// without the edit is handed back once with a nudge, and the plan from the second reply is used.
+const forcedRefused = async (url, opt) => { const b = JSON.parse(opt.body);
+  if (b.tool_choice && (b.tool_choice.type === 'tool' || b.tool_choice.type === 'any'))
+    return { ok: false, status: 400, text: async () => JSON.stringify({ error: { message: 'tool_choice: type "tool" and "any" are not supported for this model.' } }) };
+  return okFetch(url, opt); };
+await C.handleApi({ method: 'POST', op: 'frames', query: { job: 'f1', i: '0' }, body: { frames: footage[0].frames }, store, env });
+await C.handleApi({ method: 'POST', op: 'frames', query: { job: 'f1', i: '1' }, body: { frames: footage[1].frames }, store, env });
+const rf = await C.runPlan({ body: { job: 'f1', footage: meta.slice(0, 2) }, store, fetchImpl: forcedRefused, env });
+check(33, rf.ok && C.CORE_BUILD === 'SC1c-2026-11-23-toolauto', 'a model that refuses a forced tool still gets the job: ' + (rf.error || 'ok'));
+const calls = [];
+const lazyFetch = async (url, opt) => { const b = JSON.parse(opt.body); calls.push(b);
+  if (calls.length === 1) return { ok: true, status: 200, text: async () => JSON.stringify({ content: [{ type: 'text', text: 'Here is my thinking about the reel.' }], stop_reason: 'end_turn', usage: { input_tokens: 4000, output_tokens: 50 } }) };
+  return okFetch(url, opt); };
+await C.handleApi({ method: 'POST', op: 'frames', query: { job: 'f2', i: '0' }, body: { frames: footage[0].frames }, store, env });
+await C.handleApi({ method: 'POST', op: 'frames', query: { job: 'f2', i: '1' }, body: { frames: footage[1].frames }, store, env });
+const lz = await C.runPlan({ body: { job: 'f2', footage: meta.slice(0, 2) }, store, fetchImpl: lazyFetch, env });
+const f2 = await store.get('job/f2', { type: 'json' });
+const m2 = calls[1] && calls[1].messages;
+check(34, lz.ok && calls.length === 2 && m2.length === 3 && m2[1].role === 'assistant' && /Here is my thinking/.test(m2[1].content[0].text)
+  && /Call submit_edit now/.test(m2[2].content[0].text) && f2.plan.shots.length === 2, 'no edit in the first reply -> asked once more, plan from the second');
+check(35, f2.usage.in === 9100 && f2.usage.out === 470, 'token use adds up both calls (' + JSON.stringify(f2.usage) + ')');
+const never = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ content: [{ type: 'text', text: 'no' }], usage: {} }) });
+await C.handleApi({ method: 'POST', op: 'frames', query: { job: 'f3', i: '0' }, body: { frames: footage[0].frames }, store, env });
+await C.runPlan({ body: { job: 'f3', footage: meta.slice(0, 1) }, store, fetchImpl: never, env });
+const f3 = await store.get('job/f3', { type: 'json' });
+check(36, f3.status === 'error' && /did not return an edit/.test(f3.error), 'two replies with no edit -> the job says so');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
