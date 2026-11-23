@@ -6,7 +6,8 @@ import { handleApi, authOk } from '../lib/studio-core.mjs';
 const envOf = () => ({
   ANTHROPIC_API_KEY: Netlify.env.get('ANTHROPIC_API_KEY'),
   STUDIO_PASSCODE: Netlify.env.get('STUDIO_PASSCODE'),
-  STUDIO_MODEL: Netlify.env.get('STUDIO_MODEL')
+  STUDIO_MODEL: Netlify.env.get('STUDIO_MODEL'),
+  OPENAI_API_KEY: Netlify.env.get('OPENAI_API_KEY')
 });
 const out = (status, json) => new Response(JSON.stringify(json), {
   status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' }

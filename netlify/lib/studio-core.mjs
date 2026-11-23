@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1f-2026-11-23-learns';
+export const CORE_BUILD = 'SC1g-2026-11-23-colorlineup';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -398,7 +398,36 @@ export async function runPlan({ body, store, fetchImpl, env }) {
 /* ── the small API (sync function body) ──────────────────────────────── */
 export async function handleApi({ method, op, query, body, store, env }) {
   const J = (status, json) => ({ status, json });
-  if (op === 'ping') return J(200, { ok: true, core: CORE_BUILD, model: env.STUDIO_MODEL || DEFAULT_MODEL, ai: !!env.ANTHROPIC_API_KEY });
+  if (op === 'ping') return J(200, { ok: true, core: CORE_BUILD, model: env.STUDIO_MODEL || DEFAULT_MODEL, ai: !!env.ANTHROPIC_API_KEY, img: !!env.OPENAI_API_KEY });
+  /* SC1g color lineup: the car photo goes up once, renders come back one by one */
+  if (op === 'cl-src' && method === 'POST') {
+    const job = safeId(query.job), i = Number(query.i);
+    const jpg = body && typeof body.jpg === 'string' ? body.jpg : '';
+    if (!job || !(i >= 0 && i < 12)) return J(400, { error: 'bad job or photo' });
+    if (!/^[A-Za-z0-9+/=]+$/.test(jpg.slice(0, 200)) || jpg.length < 100 || jpg.length > 4500000) return J(400, { error: 'Photo missing or too big' });
+    await store.setJSON(clKey(job, 'src', i), { jpg, w: Number(body.w) || 0, h: Number(body.h) || 0 });
+    return J(200, { saved: true });
+  }
+  if (op === 'cl-status' && method === 'GET') {
+    const job = safeId(query.job);
+    if (!job) return J(400, { error: 'bad job' });
+    const ks = String(query.ks || '').split(',').map(x => Math.round(Number(x))).filter(x => x >= 0 && x < 400).slice(0, 120);
+    const out = {};
+    for (const k of ks) { const st = await store.get(clKey(job, 'st', k), { type: 'json' }); out[k] = st || { status: 'waiting' }; }
+    return J(200, { renders: out });
+  }
+  if (op === 'cl-img' && method === 'GET') {
+    const job = safeId(query.job), k = Math.round(Number(query.k));
+    const im = job && k >= 0 ? await store.get(clKey(job, 'out', k), { type: 'json' }) : null;
+    return im ? J(200, im) : J(404, { error: 'not ready' });
+  }
+  if (op === 'cl-drop' && method === 'POST') {
+    const job = safeId(query.job), n = Math.min(400, Math.round(Number(query.n) || 0)), m = Math.min(12, Math.round(Number(query.m) || 0));
+    if (!job) return J(400, { error: 'bad job' });
+    for (let k = 0; k < n; k++) { await store.delete(clKey(job, 'out', k)); await store.delete(clKey(job, 'st', k)); }
+    for (let i = 0; i < m; i++) await store.delete(clKey(job, 'src', i));
+    return J(200, { dropped: true });
+  }
   if (op === 'job' && method === 'GET') {
     const j = await store.get(jobKey(query.id), { type: 'json' });
     return j ? J(200, j) : J(404, { status: 'missing' });
@@ -541,6 +570,79 @@ export function diffPlans(ai, fin) {
   const ta = (ai.shots || []).reduce((t, x) => t + len(x), 0), tb = (fin.shots || []).reduce((t, x) => t + len(x), 0);
   if (Math.abs(ta - tb) > 2) out.push('total shots ' + ta.toFixed(0) + 's -> ' + tb.toFixed(0) + 's');
   return out.slice(0, 20).map(x => clean(x, 200));
+}
+/* ══ SC1g - COLOR LINEUP ══════════════════════════════════════════════════
+   Cole: "what if i gave the studio a few pictures of a car and 10 different wrap colors. could it do a montage
+   of that car in all the colors?" - option 2, built into the studio, on OpenAI's image editor (his own API key,
+   OPENAI_API_KEY; model OPENAI_IMAGE_MODEL, default gpt-image-2.5-sunburst - the one meant for precise edits).
+   Each render = one photo + one color. The background function runs them three at a time; each render's
+   status and image are stored on their own keys so nothing races. */
+const clKey = (job, kind, n) => 'cl/' + safeId(job) + '/' + kind + '/' + Math.max(0, Math.min(399, Math.round(Number(n) || 0)));
+export const IMAGE_MODEL = 'gpt-image-2.5-sunburst';
+export function finishOf(color) {
+  const c = String(color || '').toLowerCase();
+  if (/chrome|mirror/.test(c)) return 'chrome finish - a mirror-like reflective wrap';
+  if (/color.?shift|chameleon|iridescent|psychedelic/.test(c)) return 'color-shift finish - the color changes with the angle of the light';
+  if (/matte|matt\b|flat/.test(c)) return 'matte finish - no shine, soft diffuse reflections';
+  if (/satin|frozen/.test(c)) return 'satin finish - a soft low sheen, between matte and gloss';
+  if (/brushed/.test(c)) return 'brushed metal finish';
+  if (/carbon/.test(c)) return 'carbon fiber texture';
+  if (/metallic|pearl|flake/.test(c)) return 'gloss metallic finish with fine metal flake';
+  return 'high gloss finish with crisp reflections, like fresh paint';
+}
+export function recolorPrompt(color) {
+  const col = clean(color, 80);
+  return 'Edit this photo of a car: change the color of the car\'s painted body panels to ' + col + ' as a professional vinyl wrap, '
+    + finishOf(col) + '. Wrap every painted panel evenly - hood, roof, doors, fenders, bumpers, mirrors and pillars that are body color. '
+    + 'Keep everything else exactly the same: the same car, the same angle and framing, wheels, tires, brake calipers, glass and window tint, '
+    + 'headlights, taillights, badges and emblems, grille, chrome and black trim, license plate, background, ground, lighting and shadows. '
+    + 'Photorealistic, like a real photo of the wrapped car. No text, no watermark, no added objects.';
+}
+export function renderSize(w, h) {
+  if (!w || !h) return '1536x1024';
+  const r = w / h;
+  return r > 1.15 ? '1536x1024' : r < 0.87 ? '1024x1536' : '1024x1024';
+}
+async function recolorOne({ job, r, store, fetchImpl, env }) {
+  const k = r.k;
+  await store.setJSON(clKey(job, 'st', k), { status: 'working', color: r.color, src: r.src, at: new Date().toISOString() });
+  try {
+    const src = await store.get(clKey(job, 'src', r.src), { type: 'json' });
+    if (!src || !src.jpg) throw new Error('The car photo did not arrive - try again');
+    const fd = new FormData();
+    fd.append('model', env.OPENAI_IMAGE_MODEL || IMAGE_MODEL);
+    fd.append('prompt', recolorPrompt(r.color) + (r.extra ? ' ' + clean(r.extra, 300) : ''));
+    fd.append('image', new Blob([Buffer.from(src.jpg, 'base64')], { type: 'image/jpeg' }), 'car.jpg');
+    fd.append('size', renderSize(src.w, src.h));
+    fd.append('quality', env.OPENAI_IMAGE_QUALITY || 'medium');
+    fd.append('output_format', 'jpeg');
+    fd.append('n', '1');
+    const res = await fetchImpl('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY }, body: fd });
+    const txt = await res.text();
+    let d = null; try { d = JSON.parse(txt); } catch (e) {}
+    if (!res.ok) throw new Error('OpenAI ' + res.status + ': ' + ((d && d.error && d.error.message) || txt.slice(0, 200)));
+    const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+    if (!b64) throw new Error('OpenAI returned no image');
+    await store.setJSON(clKey(job, 'out', k), { jpg: b64, color: r.color, src: r.src });
+    await store.setJSON(clKey(job, 'st', k), { status: 'done', color: r.color, src: r.src, at: new Date().toISOString(), usage: d.usage || null });
+  } catch (e) {
+    await store.setJSON(clKey(job, 'st', k), { status: 'error', color: r.color, src: r.src, error: clean(e && e.message || e, 300) });
+  }
+}
+export async function runRecolor({ body, store, fetchImpl, env }) {
+  const job = safeId(body && body.job);
+  const list = (Array.isArray(body && body.renders) ? body.renders : []).slice(0, 120)
+    .map(r => ({ k: Math.round(Number(r.k)), src: Math.round(Number(r.src)), color: clean(r.color, 80), extra: clean(r.extra, 300) }))
+    .filter(r => r.k >= 0 && r.k < 400 && r.src >= 0 && r.src < 12 && r.color);
+  if (!job || !list.length) return { ok: false, error: 'nothing to render' };
+  if (!env.OPENAI_API_KEY) {
+    for (const r of list) await store.setJSON(clKey(job, 'st', r.k), { status: 'error', color: r.color, src: r.src, error: 'OPENAI_API_KEY is not set in Netlify' });
+    return { ok: false, error: 'no key' };
+  }
+  let next = 0;
+  const lane = async () => { while (next < list.length) { const r = list[next++]; await recolorOne({ job, r, store, fetchImpl, env }); } };
+  await Promise.all([lane(), lane(), lane()]);
+  return { ok: true, n: list.length };
 }
 const PROJ_INDEX = 'projects', PROJ_MAX = 400000, PROJ_KEEP = 300;
 const projKey = id => 'proj/' + safeId(id);

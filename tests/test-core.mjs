@@ -210,7 +210,7 @@ check(52, slim.look && slim.shots[0].speed === 2 && slim.shots[0].text && slim.s
   'a redo sees every knob; the brief tells the editor it controls them');
 
 // 53-60 SC1f - it learns: the owner's hand changes become lessons; lessons and notes ride on every request
-check(53, C.CORE_BUILD === 'SC1f-2026-11-23-learns', 'core ' + C.CORE_BUILD);
+check(53, /^SC1[f-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const sp16 = C.validatePlan({ template: 'walk', shots: [{ footage: 1, in: 0, out: 4, speed: 40, what: 'PPF going on the hood' }], footage_notes: [{ footage: 1, what: 'PPF install, hood' }] }, footage);
 check(54, sp16.shots[0].speed === 16 && sp16.shots[0].what === 'PPF going on the hood' && sp16.footage_notes[0].what === 'PPF install, hood' && /4 to 16 = time-lapse/.test(C.PLAN_TOOL.input_schema.properties.shots.items.properties.speed.description), 'time-lapse up to 16x; shots and footage carry what they show');
 const aiCut = { template: 'walk', cut: 'dip', look: {}, footage_notes: [{ footage: 3, what: 'cutting PPF by hand' }],
@@ -238,6 +238,39 @@ const lat = stl.json.lessons[0].at;
 const delL = await C.handleApi({ method: "POST", op: "learn-del", query: {}, body: { kind: "lesson", at: lat }, store: ls2store, env });
 const badL = await C.handleApi({ method: "POST", op: "learn-del", query: {}, body: { kind: 'x', at: lat }, store: ls2store, env });
 check(60, delL.status === 200 && delL.json.lessons.length === 0 && badL.status === 400, 'a wrong lesson can be forgotten');
+
+// 61-68 SC1g color lineup - recolor renders on OpenAI's image editor, one key per render
+check(61, C.CORE_BUILD === 'SC1g-2026-11-23-colorlineup', 'core ' + C.CORE_BUILD);
+const pr = C.recolorPrompt('Satin Nardo Grey');
+check(62, /Satin Nardo Grey/.test(pr) && /satin finish/.test(pr) && /Keep everything else exactly the same/.test(pr) && /wheels, tires/.test(pr) && /license plate/.test(pr) && /No text, no watermark/.test(pr)
+  && /matte finish/.test(C.finishOf('Matte Military Green')) && /chrome/.test(C.finishOf('Gold Chrome')) && /high gloss/.test(C.finishOf('Miami Blue')), 'the prompt names the color and finish and freezes everything else');
+check(63, C.renderSize(1600, 1200) === '1536x1024' && C.renderSize(1200, 1600) === '1024x1536' && C.renderSize(1000, 1000) === '1024x1024', 'render size follows the photo shape');
+const cs = fakeStore();
+const ok1 = await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'cj1', i: '0' }, body: { jpg: 'QUJD'.repeat(100), w: 1600, h: 1200 }, store: cs, env });
+const bad1 = await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'cj1', i: '0' }, body: { jpg: '<script>' }, store: cs, env });
+check(64, ok1.status === 200 && bad1.status === 400 && cs.m.has('cl/cj1/src/0'), 'car photo stored; junk refused');
+const oaCalls = [];
+const fakeOA = async (url, opt) => {
+  const fd = opt.body; const fields = {}; for (const [k, v] of fd.entries()) fields[k] = typeof v === 'string' ? v : 'FILE:' + v.size;
+  oaCalls.push({ url, auth: opt.headers.Authorization, fields });
+  if (/Fail Purple/.test(fields.prompt)) return { ok: false, status: 400, text: async () => JSON.stringify({ error: { message: 'Your request was rejected' } }) };
+  return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: Buffer.from('jpeg-' + fields.prompt.slice(60, 80)).toString('base64') }], usage: { total_tokens: 100 } }) };
+};
+const envImg = Object.assign({}, env, { OPENAI_API_KEY: 'sk-oa' });
+await C.runRecolor({ body: { job: 'cj1', renders: [{ k: 0, src: 0, color: 'Gloss Miami Blue' }, { k: 1, src: 0, color: 'Fail Purple' }, { k: 2, src: 0, color: 'Satin Black' }, { k: 3, src: 5, color: 'x' }] }, store: cs, fetchImpl: fakeOA, env: envImg });
+const clst = await C.handleApi({ method: 'GET', op: 'cl-status', query: { job: 'cj1', ks: '0,1,2,3' }, store: cs, env });
+const c0 = oaCalls[0];
+check(65, oaCalls.length === 3 && c0.url === 'https://api.openai.com/v1/images/edits' && c0.auth === 'Bearer sk-oa' && c0.fields.model === 'gpt-image-2.5-sunburst' && /^FILE:\d+/.test(c0.fields.image) && c0.fields.size === '1536x1024' && c0.fields.output_format === 'jpeg' && c0.fields.quality === 'medium',
+  'OpenAI image edit called with the photo, model, size, jpeg (a render of a missing photo fails on its own) ' + JSON.stringify(c0.fields).slice(0, 120));
+const rs = clst.json.renders;
+check(66, rs[0].status === 'done' && rs[2].status === 'done' && rs[1].status === 'error' && /400: Your request was rejected/.test(rs[1].error) && rs[3].status === 'error', 'each render has its own status; a refusal says why');
+const clim = await C.handleApi({ method: 'GET', op: 'cl-img', query: { job: 'cj1', k: '0' }, store: cs, env });
+const im404 = await C.handleApi({ method: 'GET', op: 'cl-img', query: { job: 'cj1', k: '1' }, store: cs, env });
+check(67, clim.status === 200 && clim.json.jpg && clim.json.color === 'Gloss Miami Blue' && im404.status === 404, 'finished render readable; failed one 404');
+await C.runRecolor({ body: { job: 'cj2', renders: [{ k: 0, src: 0, color: 'Red' }] }, store: cs, fetchImpl: fakeOA, env });
+const st2 = await C.handleApi({ method: 'GET', op: 'cl-status', query: { job: 'cj2', ks: '0' }, store: cs, env });
+await C.handleApi({ method: 'POST', op: 'cl-drop', query: { job: 'cj1', n: '4', m: '1' }, body: {}, store: cs, env });
+check(68, /OPENAI_API_KEY is not set/.test(st2.json.renders[0].error) && ![...cs.m.keys()].some(k => k.startsWith('cl/cj1/')), 'no key says so; cl-drop clears the job');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
