@@ -10,7 +10,7 @@
 /*@KITCSS*/
 </style>
 <style>
-/* ══ REEL STUDIO - ST1f ══════════════════════════════════════════════════════
+/* ══ REEL STUDIO - ST1g ══════════════════════════════════════════════════════
    Raw footage in, finished reel out. An AI editor plans the cut from stills,
    this page renders it. Everything runs on the device: clips are read from
    the files you pick, the reel is drawn on a canvas and encoded by the
@@ -179,6 +179,13 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
   .ai-row{flex-direction:column;align-items:stretch}
   .ai-row .xl-btn{width:100%}
   .rev-btns .xl-btn{flex:1}
+}
+/* ST1g - Cole: "the page is zoomed into the top left of the screen and i have to manually zoom back out
+   everytime on my phone". iPhone Safari zooms in on any text field under 16px when it is tapped, and stays
+   zoomed. The shot label (14px), rules box (14px), passcode and name fields (15px) all did. Every field on a
+   touch screen or a narrow window is now 16px, which iPhone never zooms on. */
+@media (pointer:coarse),(max-width:900px){
+  input,textarea,select,.xl-input,.xl-textarea,.xl-f input,.xl-f textarea,.xl-f select,.clip-opts .xl-f input{font-size:16px!important}
 }
 /* ST1e saved projects: the bar under the title, the list sheet, the re-add card */
 .proj-bar{display:flex;align-items:center;gap:10px;padding:11px 12px 11px 16px;border-radius:16px;background:#121217;border:1px solid var(--hair);margin:0 0 24px;position:relative;overflow:hidden}
@@ -454,7 +461,7 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1f-2026-11-23-fullcontrol';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1g-2026-11-23-nozoom';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
