@@ -598,7 +598,7 @@ body.rm .xl-act.urgent{animation:none}
 
 </style>
 <style>
-/* ══ REEL STUDIO - ST1b ══════════════════════════════════════════════════════
+/* ══ REEL STUDIO - ST1c ══════════════════════════════════════════════════════
    Raw footage in, finished reel out. An AI editor plans the cut from stills,
    this page renders it. Everything runs on the device: clips are read from
    the files you pick, the reel is drawn on a canvas and encoded by the
@@ -2343,7 +2343,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1b-2026-11-16-autoedit';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1c-2026-11-23-iosload';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -2697,6 +2697,15 @@ function replan(keepT) {
 }
 
 /* ── clips ───────────────────────────────────────────────────────────── */
+function vidHolder() {
+  let h = document.getElementById('vid-holder');
+  if (!h) {
+    h = document.createElement('div'); h.id = 'vid-holder'; h.setAttribute('aria-hidden', 'true');
+    h.style.cssText = 'position:fixed;left:-10px;top:-10px;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none;';
+    document.body.appendChild(h);
+  }
+  return h;
+}
 function loadClip(file) {
   return new Promise(resolve => {
     const isImg = /^image\//.test(file.type) || /\.(jpe?g|png|heic|webp)$/i.test(file.name);
@@ -2711,24 +2720,43 @@ function loadClip(file) {
       c.fit = w > h * 1.05 ? 'fit' : 'fill';          // landscape footage shows whole by default
       c.ready = true; resolve({ c });
     };
-    setTimeout(() => fail('timed out'), 20000);
+    /* ST1c: big phone videos (4K HEVC .mov) can take a while to read - allow 90s, and say what to try. */
+    setTimeout(() => fail('it took too long to read. Try a shorter clip, or export it from Photos first'), 90000);
     if (isImg) {
       const img = new Image();
       img.onload = () => { c.el = img; c.srcDur = 10; c.inT = 0; c.outT = 3; ok(); };
       img.onerror = () => fail('not an image this browser can read');
       img.src = url;
     } else {
+      /* ST1c: iPhone Safari reads a video's size and length (loadedmetadata) but does not decode a
+         frame (loadeddata) for a video that is not on the page and has not been asked for one - so
+         ST1b's wait for loadeddata timed out on every iPhone clip. Now: the video sits in an
+         off-screen holder on the page, and once its metadata is in we ask for a frame by seeking.
+         The first of loadeddata / seeked finishes the load. No crossOrigin on a blob: URL (same origin). */
       const v = document.createElement('video');
-      v.muted = true; v.playsInline = true; v.preload = 'auto'; v.crossOrigin = 'anonymous';
-      v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
-      v.onloadeddata = () => {
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.setAttribute('webkit-playsinline', '');
+      v.setAttribute('aria-hidden', 'true');
+      v.style.cssText = 'position:absolute;left:0;top:0;width:2px;height:2px;';
+      const take = () => {
+        if (done) return;
         if (!v.videoWidth) { fail('no picture in it'); return; }
-        c.el = v; c.srcDur = isFinite(v.duration) ? v.duration : 5;
+        c.el = v; c.srcDur = isFinite(v.duration) && v.duration > 0 ? v.duration : 5;
         c.inT = 0; c.outT = Math.min(c.srcDur, 6);
         ok();
       };
+      v.addEventListener('loadeddata', take);
+      v.addEventListener('seeked', take);
+      v.addEventListener('loadedmetadata', () => {
+        if (done) return;
+        try { v.currentTime = Math.min(0.05, (v.duration || 1) / 2); } catch (e) {}
+        // A frame that still never comes: the size is known, so carry on - drawing catches up on the next seek.
+        setTimeout(() => { if (!done && v.videoWidth) take(); }, 6000);
+      });
       v.onerror = () => fail('this browser cannot play that video format');
+      vidHolder().appendChild(v);
       v.src = url;
+      try { v.load(); } catch (e) {}
     }
   });
 }

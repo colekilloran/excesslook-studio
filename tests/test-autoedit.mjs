@@ -88,7 +88,7 @@ async function open(vp, mobile) {
 }
 try {
   const page = await open({ width: 1180, height: 820 });
-  check(1, /^ST1b-/.test(await page.evaluate(() => window.XL_STUDIO_BUILD)), 'build marker');
+  check(1, /^ST1[b-z]-/.test(await page.evaluate(() => window.XL_STUDIO_BUILD)), 'build marker');
 
   // 2 no footage yet
   await page.click('#btn-auto');
