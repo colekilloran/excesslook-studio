@@ -10,7 +10,7 @@
 /*@KITCSS*/
 </style>
 <style>
-/* ══ REEL STUDIO - ST1c ══════════════════════════════════════════════════════
+/* ══ REEL STUDIO - ST1d ══════════════════════════════════════════════════════
    Raw footage in, finished reel out. An AI editor plans the cut from stills,
    this page renders it. Everything runs on the device: clips are read from
    the files you pick, the reel is drawn on a canvas and encoded by the
@@ -168,6 +168,16 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
   .ai-row .xl-btn{width:100%}
   .rev-btns .xl-btn{flex:1}
 }
+/* ST1d "See It": every edit already shows live in the preview, but on a phone the preview has scrolled
+   away by the time you edit a shot - this floating button brings it back and plays the change. */
+.see-it{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));z-index:60;display:flex;align-items:center;gap:8px;
+  padding:13px 22px;border-radius:999px;color:var(--gold);font:700 13px/1 Montserrat,sans-serif;letter-spacing:.08em;text-transform:uppercase;
+  cursor:pointer;opacity:0;pointer-events:none;transform:translate(-50%,160%);
+  transition:transform .42s cubic-bezier(.32,1.28,.5,1),opacity .2s ease;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 var(--hair-hi)}
+.see-it.on{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+.see-it.on:active{transform:translate(-50%,0) scale(.95);filter:brightness(1.16);transition-duration:.12s}
+.see-it svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@media(prefers-reduced-motion:reduce){.see-it{transition:opacity .2s ease;transform:translate(-50%,0)}}
 @media(max-width:900px){
   .studio{grid-template-columns:minmax(0,1fr);gap:22px}
   .pv-col{position:static;width:min(340px,100%);margin:0 auto}
@@ -191,6 +201,7 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
   <div class="nav-small">REEL <span style="color:var(--gold)">STUDIO</span></div>
 </div>
 
+<button id="see-it" class="see-it xl-glass" type="button" aria-label="See the change in the preview"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>See It</button>
 <div id="scroller">
 <div class="wrap">
   <div class="nav-large" id="large-title">REEL <span style="color:var(--gold)">STUDIO</span></div>
@@ -359,7 +370,7 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1c-2026-11-23-iosload';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1d-2026-11-23-seeit';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -944,7 +955,7 @@ $('clips').addEventListener('input', e => {
   const card = e.target.closest('.clip'); if (!card) return;
   const c = clipById(card.dataset.id); if (!c) return;
   const a = e.target.dataset.a;
-  if (a === 'label') { c.label = e.target.value; dirty(); const t = card.querySelector('.xl-row-txt .t'); if (t) t.lastChild.textContent = ' ' + (labelFor({ clip: c, i: S.clips.indexOf(c), n: S.clips.length }) || (c.kind === 'image' ? 'Photo' : 'Video')); return; }
+  if (a === 'label') { c.label = e.target.value; dirty(); { const s0 = segOf(c); edited(s0 ? s0.start + 0.001 : 0); } const t = card.querySelector('.xl-row-txt .t'); if (t) t.lastChild.textContent = ' ' + (labelFor({ clip: c, i: S.clips.indexOf(c), n: S.clips.length }) || (c.kind === 'image' ? 'Photo' : 'Video')); return; }
   if (a === 'in' || a === 'out' || a === 'len') {
     const v = parseFloat(e.target.value);
     if (a === 'in') { c.inT = clamp(v, 0, c.outT - 0.3); e.target.value = c.inT; }
@@ -958,6 +969,7 @@ $('clips').addEventListener('input', e => {
     replan(false);
     const s = segOf(c);
     if (s) seekTo(a === 'out' ? s.start + s.dur - 0.04 : s.start + 0.001);
+    if (s) edited(s.start + 0.001);
   }
 });
 
@@ -1439,10 +1451,29 @@ function setTpl(k) {
   $('tpl-hint').textContent = TPL[k].hint;
   renderClips(); replan(true);
 }
-document.querySelectorAll('#tpl-seg button').forEach(b => b.addEventListener('click', () => setTpl(b.dataset.tpl)));
+document.querySelectorAll('#tpl-seg button').forEach(b => b.addEventListener('click', () => { setTpl(b.dataset.tpl); edited(0); }));
 [['f-title', 'title'], ['f-service', 'service'], ['f-cta', 'cta'], ['f-tag', 'tag']].forEach(([id, key]) => {
-  $(id).addEventListener('input', e => { S[key] = e.target.value; dirty(); });
+  $(id).addEventListener('input', e => { S[key] = e.target.value; dirty(); edited(key === 'cta' || key === 'tag' ? Math.max(0, P.total - 2.5) : 0); });
 });
+/* ST1d - See It. Edits apply live; when the preview is off screen (phone), a floating button appears after an
+   edit. Tap: the keyboard closes, the preview scrolls back and plays from the edited spot. Nothing is saved
+   or changed by the button itself. */
+let seeAt = null, pvSeen = true;
+const seeBtn = $('see-it');
+function showSee() { seeBtn.classList.toggle('on', seeAt !== null && !pvSeen && P.segs.length > 0); }
+function edited(t) { seeAt = Math.max(0, t || 0); showSee(); }
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(es => { pvSeen = es[es.length - 1].isIntersecting; if (pvSeen) seeAt = null; showSee(); },
+    { root: $('scroller'), threshold: 0.4 }).observe($('pv'));
+}
+seeBtn.addEventListener('click', () => {
+  const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur();
+  const t = seeAt || 0; seeAt = null; showSee();
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('pv').scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+  setPlaying(false); seekTo(Math.min(t, Math.max(0, P.total - 0.05))); setPlaying(true);
+});
+
 $('add-clips').onclick = () => $('file-clips').click();
 $('add-clips-top').onclick = () => $('file-clips').click();
 $('file-clips').onchange = e => { const f = e.target.files; addFiles(f).then(() => { e.target.value = ''; }); };
@@ -1479,7 +1510,7 @@ requestAnimationFrame(t => { lastNow = t; loop(t); });
 /* test and console hooks */
 window.XLStudio = {
   build: XL_STUDIO_BUILD, S, plan: () => plan(), addFiles, addMusic, exportReel, setTpl, autoEdit, applyPlan, srcBoxToOut, planFromState,
-  get lastBlob() { return lastBlob; }, get T() { return T; }, seekTo, drawFrame, pickVideoCodec, pickAudioCodec
+  get lastBlob() { return lastBlob; }, get T() { return T; }, get playing() { return playing; }, seekTo, drawFrame, pickVideoCodec, pickAudioCodec
 };
 })();
 </script>
