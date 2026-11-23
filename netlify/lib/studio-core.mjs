@@ -3,11 +3,12 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1e-2026-11-23-fullcontrol';
+export const CORE_BUILD = 'SC1f-2026-11-23-learns';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
 const MAX_REEL = 90;
+const LESSONS_SENT = 15, NOTES_SENT = 10, LESSONS_KEPT = 40;
 const MOTIONS = ['auto', 'none', 'slow', 'in', 'out', 'left', 'right', 'up', 'down'];
 
 /* ── auth ─────────────────────────────────────────────────────────────── */
@@ -66,7 +67,8 @@ export const PLAN_TOOL = {
             out: { type: 'number', description: 'End time in seconds within that footage.' },
             label: { type: 'string', description: 'Optional short label shown as a gold pill, max 18 characters, e.g. BEFORE, AFTER, 50/50. Empty for none.' },
             fit: { type: 'string', enum: ['fill', 'fit'], description: 'fill = crop to fill the 9:16 frame (default for vertical footage). fit = show the whole frame over a blurred copy (use for landscape footage when the edges matter).' },
-            speed: { type: 'number', description: 'Playback speed, 0.25 to 4. 1 = normal, 0.5 = slow motion, 2 = double speed. The shot lasts (out - in) / speed on screen. Sound is pitched with it.' },
+            speed: { type: 'number', description: 'Playback speed, 0.25 to 16. 1 = real time, 0.5 = slow motion, 2 = double, 4 to 16 = time-lapse for long work (a coating or film going on). The shot lasts (out - in) / speed on screen. Sound plays only up to 2x.' },
+            what: { type: 'string', description: 'A few words on what this shot shows, e.g. "polish going on the pad", "cutting PPF by hand", "foam on the R8, wide". Used to learn from the owner\'s changes.' },
             motion: { type: 'string', enum: ['auto', 'none', 'slow', 'in', 'out', 'left', 'right', 'up', 'down'],
               description: 'Camera move drawn over the shot. auto = the template default (ba none, walk slow, reveal in). none = locked off. slow = gentle drift-in. in = push-in. out = pull-out. left / right / up / down = slow pan.' },
             zoom: { type: 'number', description: 'Reframe zoom, 1 to 3. 1 = the normal fill or fit; above 1 crops in tighter.' },
@@ -83,6 +85,8 @@ export const PLAN_TOOL = {
           required: ['footage', 'in', 'out']
         }
       },
+      footage_notes: { type: 'array', maxItems: 40, description: 'One short line per footage item on what it shows overall (e.g. F3: "PPF install on the hood, 4 minutes, mostly squeegee").',
+        items: { type: 'object', properties: { footage: { type: 'integer' }, what: { type: 'string' } }, required: ['footage', 'what'] } },
       caption: { type: 'string', description: 'Instagram / TikTok caption. Hook line first, 1-3 short lines, a call to book, no hashtags here.' },
       hashtags: { type: 'array', items: { type: 'string' }, maxItems: 15, description: 'Hashtags without the # sign.' },
       why: { type: 'string', description: 'Two or three sentences to the shop owner: what you chose for the hook and why, and anything in the footage you skipped or were unsure about.' }
@@ -121,6 +125,7 @@ export const EDITOR_BRIEF = [
   '- Close-ups carry the reel: pad on paint, foam, mitt, brush, squeegee, water beading. Use a wide shot only to place the car or for the final reveal.',
   '- Text: one idea at a time, short, bold, centered in the safe area. Caps for offers and prices. For a process reel, a short caption naming each step.',
   '- End on the finished car, then a short call to book ("Book now"). When it fits, end on the same shot the reel opened with so it loops.',
+  '- Process reels mix speeds: time-lapse the long stretches (coating or film going on, a full panel of polishing) at 4x to 16x, and drop to real time (1x) for the satisfying detail moments - polish going on the pad, cutting PPF by hand, the first squeegee pass, a 50/50 line - then go back to the time-lapse. Keep each time-lapse shot 1.5 to 3 seconds on screen.',
   '- Cuts between shots are straight hard cuts (cut = hard). Use dip or flash only when the owner asks for it. You control this - never say the studio adds transitions you cannot change.',
   '- Reel types that work for this shop - pick the one the footage supports: Flash transitions (the same angle dirty then clean, cut back and forth, best with template ba); Hook + proof (a question as the first text, then the close-ups that answer it); Single satisfying take (one long steady shot, no text, when the footage is one clean continuous move); Process with step captions + finished reveal + book now; Offer promo (rotating short offer text over fast foam / wash close-ups).',
   '',
@@ -166,7 +171,17 @@ export function buildRequest({ footage, style, prev, want, model }) {
   let task = '';
   task += rules.length ? 'The owner\'s rules (always follow):\n' + rules.map(r => '- ' + r).join('\n') + '\n\n' : 'The owner has not set any rules yet - use the defaults.\n\n';
   if (examples.length) {
-    task += 'Edits the owner approved before (match this taste):\n' + examples.map(e => '- ' + clean(e.summary, 400)).join('\n') + '\n\n';
+    task += 'Edits the owner approved before (match this taste):\n' + examples.map(e => '- ' + clean(e.summary, 600)).join('\n') + '\n\n';
+  }
+  const lessons = (style && Array.isArray(style.lessons) ? style.lessons : []).slice(-LESSONS_SENT);
+  if (lessons.length) {
+    task += 'What the owner changed by hand on your recent cuts before exporting them - learn from these and make those choices yourself next time:\n'
+      + lessons.map(l => '- ' + clean(l.text, 500)).join('\n') + '\n\n';
+  }
+  const ruleSet = new Set(rules.map(r => r.toLowerCase()));
+  const notes = (style && Array.isArray(style.feedback) ? style.feedback : []).filter(f => f && f.text && !ruleSet.has(String(f.text).toLowerCase())).slice(-NOTES_SENT);
+  if (notes.length) {
+    task += 'The owner\'s recent notes on past reels (they show his taste - apply them where they fit this footage):\n' + notes.map(f => '- ' + clean(f.text, 300)).join('\n') + '\n\n';
   }
   if (prev && prev.plan) {
     task += 'Your previous draft of THIS reel:\n' + JSON.stringify(slimPlan(prev.plan)).slice(0, 12000) + '\n';
@@ -210,7 +225,7 @@ export function validatePlan(raw, footage) {
     const f = F.find(x => x.n === n);
     if (!f) return;
     let a, b;
-    const speed = f.kind === 'image' ? 1 : cl(num(s.speed, 1), 0.25, 4);
+    const speed = f.kind === 'image' ? 1 : cl(num(s.speed, 1), 0.25, 16);
     if (f.kind === 'image') { a = 0; b = cl(num(s.out, 3) - num(s.in, 0), 1, 6); }
     else {
       a = cl(num(s.in, 0), 0, Math.max(0, f.dur - 0.4));
@@ -234,6 +249,7 @@ export function validatePlan(raw, footage) {
       zoom: +cl(num(s.zoom, 1), 1, 3).toFixed(2),
       focus: { x: +cl(num(fo.x, 0.5), 0, 1).toFixed(3), y: +cl(num(fo.y, 0.5), 0, 1).toFixed(3) },
       text: clean(s.text, 70),
+      what: clean(s.what, 60),
       text_pos: ['top', 'center', 'bottom'].includes(s.text_pos) ? s.text_pos : 'center',
       blur
     });
@@ -251,9 +267,12 @@ export function validatePlan(raw, footage) {
   if (lk.end_seconds != null && isFinite(parseFloat(lk.end_seconds))) look.endLen = +cl(num(lk.end_seconds, 2.6), 1.5, 5).toFixed(1);
   if (typeof lk.end_line === 'string') look.cta = clean(lk.end_line, 40);
   if (typeof lk.end_small === 'string') look.tag = clean(lk.end_small, 40);
+  const notes = (Array.isArray(raw.footage_notes) ? raw.footage_notes : []).slice(0, 40)
+    .map(x => ({ footage: Math.round(num(x && x.footage, 0)), what: clean(x && x.what, 80) })).filter(x => x.footage > 0 && x.what);
   return {
     template: tpl,
     look,
+    footage_notes: notes,
     cut: ['hard', 'dip', 'flash'].includes(raw.cut) ? raw.cut : 'hard',
     title: clean(raw.title, 40),
     service: clean(raw.service, 48),
@@ -270,7 +289,7 @@ export function slimPlan(p) {
     shots: (p.shots || []).map(s => {
       const o = { footage: s.footage, in: s.in, out: s.out };
       if (s.label) o.label = s.label;
-      ['fit', 'motion', 'text', 'text_pos'].forEach(k => { if (s[k]) o[k] = s[k]; });
+      ['fit', 'motion', 'text', 'text_pos', 'what'].forEach(k => { if (s[k]) o[k] = s[k]; });
       if (s.speed && s.speed !== 1) o.speed = s.speed;
       if (s.zoom && s.zoom !== 1) o.zoom = s.zoom;
       if (s.focus && (s.focus.x !== 0.5 || s.focus.y !== 0.5)) o.focus = s.focus;
@@ -286,6 +305,8 @@ export function summarize(p) {
     + (p.title ? ', headline "' + p.title + '"' : '')
     + (p.service ? ', service "' + p.service + '"' : '')
     + (p.shots && p.shots[0] ? ', opens ' + (p.shots[0].label ? 'on ' + p.shots[0].label : 'on F' + p.shots[0].footage) + ' for ' + (p.shots[0].out - p.shots[0].in).toFixed(1) + 's' : '')
+    + (p.shots && p.shots.length ? '. Shots: ' + p.shots.slice(0, 14).map(x => ((x.out - x.in) / (x.speed || 1)).toFixed(1) + 's' + (x.speed && x.speed !== 1 ? ' at ' + x.speed + 'x' : '') + (x.what ? ' ' + x.what : '') + (x.text ? ' text "' + String(x.text).slice(0, 30) + '"' : '')).join('; ') : '')
+    + (p.cut ? '. Cuts: ' + p.cut : '')
     + (p.caption ? '. Caption starts: "' + p.caption.split('\n')[0].slice(0, 90) + '"' : '')
     + (p.note ? '. Owner note: ' + p.note : '');
 }
@@ -294,12 +315,13 @@ export function summarize(p) {
 const STYLE_KEY = 'style';
 export async function readStyle(store) {
   const s = await store.get(STYLE_KEY, { type: 'json' });
-  return Object.assign({ rules: [], examples: [], feedback: [] }, s || {});
+  return Object.assign({ rules: [], examples: [], feedback: [], lessons: [] }, s || {});
 }
 async function writeStyle(store, s) {
   s.rules = (s.rules || []).map(r => clean(r, 300)).filter(Boolean).slice(0, 60);
   s.examples = (s.examples || []).slice(-12);
   s.feedback = (s.feedback || []).slice(-40);
+  s.lessons = (s.lessons || []).slice(-LESSONS_KEPT);
   s.updated = new Date().toISOString();
   await store.setJSON(STYLE_KEY, s);
   return s;
@@ -392,7 +414,7 @@ export async function handleApi({ method, op, query, body, store, env }) {
   }
   if (op === 'style' && method === 'GET') {
     const s = await readStyle(store);
-    return J(200, { rules: s.rules, examples: s.examples.slice(-6), feedback: s.feedback.slice(-10), updated: s.updated || null });
+    return J(200, { rules: s.rules, examples: s.examples.slice(-6), feedback: s.feedback.slice(-NOTES_SENT), lessons: s.lessons.slice(-LESSONS_SENT), updated: s.updated || null });
   }
   if (op === 'style' && method === 'POST') {
     const s = await readStyle(store);
@@ -413,9 +435,24 @@ export async function handleApi({ method, op, query, body, store, env }) {
   if (op === 'approve' && method === 'POST') {
     if (!body || !body.plan) return J(400, { error: 'no plan' });
     const s = await readStyle(store);
-    s.examples.push({ at: new Date().toISOString(), summary: summarize(Object.assign({}, body.plan, { note: clean(body.note, 200) })) });
+    const at = new Date().toISOString();
+    s.examples.push({ at, summary: summarize(Object.assign({}, body.plan, { note: clean(body.note, 200) })) });
+    let lesson = '';
+    if (body.ai && Array.isArray(body.ai.shots)) {
+      const lines = diffPlans(body.ai, body.plan);
+      if (lines.length) { lesson = lines.join('; '); s.lessons.push({ at, text: lesson }); }
+    }
     await writeStyle(store, s);
-    return J(200, { saved: true, examples: s.examples.length });
+    return J(200, { saved: true, examples: s.examples.length, lesson });
+  }
+  if (op === 'learn-del' && method === 'POST') {
+    const kind = body && body.kind, at = String(body && body.at || '');
+    const s = await readStyle(store);
+    if (kind === 'lesson') s.lessons = s.lessons.filter(l => l.at !== at);
+    else if (kind === 'note') s.feedback = s.feedback.filter(f => f.at !== at);
+    else return J(400, { error: 'kind must be lesson or note' });
+    await writeStyle(store, s);
+    return J(200, { deleted: true, lessons: s.lessons.slice(-LESSONS_SENT), feedback: s.feedback.slice(-NOTES_SENT) });
   }
   /* SC1d - saved projects (Cole: "a way to save a video and settings for how the video was created so i can
      come back to it" - chose "settings online, footage on device"). A project is the edit, never the footage:
@@ -456,6 +493,54 @@ export async function handleApi({ method, op, query, body, store, env }) {
     return J(200, { deleted: true, id });
   }
   return J(404, { error: 'unknown op' });
+}
+/* SC1f - what the owner changed between the editor's cut and what he exported, in words the editor can learn
+   from next time. Shots are paired by footage and overlap; each line names the shot by what it shows. */
+export function diffPlans(ai, fin) {
+  const out = [];
+  if (!ai || !fin) return out;
+  const notes = {}; (ai.footage_notes || []).forEach(n => { notes[n.footage] = n.what; });
+  const A = (ai.shots || []).map((x, i) => Object.assign({ i }, x)), B = (fin.shots || []).map((x, i) => Object.assign({ i }, x));
+  const name = (x, fromAi) => x.what ? '"' + x.what + '"' : notes[x.footage] ? 'a shot from F' + x.footage + ' ("' + notes[x.footage] + '")' : 'a shot from F' + x.footage;
+  const sp = x => Number(x.speed) || 1, len = x => (x.out - x.in) / sp(x);
+  const fx = v => (Number(v) === 1 ? 'real time (1x)' : v + 'x');
+  const used = new Set(), pairs = [];
+  B.forEach(b => {
+    let best = null, ov = 0;
+    A.forEach(a => {
+      if (used.has(a.i) || a.footage !== b.footage) return;
+      const o = Math.min(a.out, b.out) - Math.max(a.in, b.in);
+      if (o > ov || (best === null && o > -0.5)) { best = a; ov = o; }
+    });
+    if (best) { used.add(best.i); pairs.push([best, b]); b.what = b.what || best.what; }
+    else out.push('added ' + name(b) + ' (' + (b.in != null ? (+b.in).toFixed(1) : '?') + '-' + (b.out != null ? (+b.out).toFixed(1) : '?') + 's) at ' + fx(sp(b)) + (b.text ? ' with text "' + b.text + '"' : ''));
+  });
+  A.filter(a => !used.has(a.i)).forEach(a => out.push('removed ' + name(a, true)));
+  pairs.forEach(([a, b]) => {
+    const n = name(a, true);
+    if (Math.abs(sp(a) - sp(b)) > 0.01) out.push((sp(b) < sp(a) ? 'slowed ' : 'sped up ') + n + ' from ' + fx(sp(a)) + ' to ' + fx(sp(b)));
+    if (Math.abs(len(a) - len(b)) > 0.6 && Math.abs(sp(a) - sp(b)) <= 0.01) out.push((len(b) < len(a) ? 'shortened ' : 'lengthened ') + n + ' from ' + len(a).toFixed(1) + 's to ' + len(b).toFixed(1) + 's on screen');
+    if ((a.motion || 'auto') !== (b.motion || 'auto')) out.push('changed motion on ' + n + ' from ' + (a.motion || 'auto') + ' to ' + (b.motion || 'auto'));
+    if ((a.fit || '') && b.fit && a.fit !== b.fit) out.push('set ' + n + ' to ' + (b.fit === 'fit' ? 'fit (whole frame)' : 'fill (cropped)'));
+    if ((a.text || '') !== (b.text || '')) out.push(!b.text ? 'removed the text "' + a.text + '" from ' + n : !a.text ? 'added text "' + b.text + '" on ' + n : 'changed the text on ' + n + ' from "' + a.text + '" to "' + b.text + '"');
+    else if (a.text && (a.text_pos || 'center') !== (b.text_pos || 'center')) out.push('moved the text on ' + n + ' to the ' + b.text_pos);
+    const az = Number(a.zoom) || 1, bz = Number(b.zoom) || 1, af = a.focus || {}, bf = b.focus || {};
+    if (Math.abs(az - bz) > 0.1 || Math.abs((af.x ?? 0.5) - (bf.x ?? 0.5)) > 0.1 || Math.abs((af.y ?? 0.5) - (bf.y ?? 0.5)) > 0.1) out.push('reframed ' + n + ' (zoom ' + bz.toFixed(1) + ', focus ' + (+(bf.x ?? 0.5)).toFixed(2) + ',' + (+(bf.y ?? 0.5)).toFixed(2) + ')');
+  });
+  const order = pairs.map(p => p[0].i);
+  if (order.some((v, i) => i && v < order[i - 1])) out.push('reordered the shots');
+  if (ai.template && fin.template && ai.template !== fin.template) out.push('changed the template from ' + ai.template + ' to ' + fin.template);
+  if ((ai.cut || 'hard') !== (fin.cut || 'hard')) out.push('changed the cuts from ' + (ai.cut || 'hard') + ' to ' + (fin.cut || 'hard'));
+  const la = ai.look || {}, lb = fin.look || {};
+  [['headline', 'headline'], ['lower', 'lower_third', 'service bar'], ['bg', 'background', 'background behind fit shots'], ['shade', 'shade', 'bottom shade'], ['logo', 'logo', 'logo'], ['end', 'end_card', 'end card']].forEach(([k, k2, label]) => {
+    const va = la[k] !== undefined ? la[k] : la[k2], vb = lb[k] !== undefined ? lb[k] : lb[k2];
+    if (vb !== undefined && va !== undefined && String(va) !== String(vb)) out.push('set the ' + (label || k) + ' to ' + vb);
+    else if (vb !== undefined && va === undefined && !['auto', 'blur', true, 'true'].includes(vb)) out.push('set the ' + (label || k) + ' to ' + vb);
+  });
+  if ((ai.title || '') !== (fin.title || '') && fin.title !== undefined) out.push('changed the headline to "' + (fin.title || '') + '"');
+  const ta = (ai.shots || []).reduce((t, x) => t + len(x), 0), tb = (fin.shots || []).reduce((t, x) => t + len(x), 0);
+  if (Math.abs(ta - tb) > 2) out.push('total shots ' + ta.toFixed(0) + 's -> ' + tb.toFixed(0) + 's');
+  return out.slice(0, 20).map(x => clean(x, 200));
 }
 const PROJ_INDEX = 'projects', PROJ_MAX = 400000, PROJ_KEEP = 300;
 const projKey = id => 'proj/' + safeId(id);

@@ -193,7 +193,7 @@ const rq = C.buildRequest({ footage, style: { rules: [], examples: [] } });
 check(46, rq.tools[0].input_schema.properties.cut.enum.join() === 'hard,dip,flash' && /hard cuts/.test(rq.system) && /never say the studio adds transitions/.test(rq.system), 'the editor knows it sets the cut');
 
 // 47-52 SC1e full control - every renderer knob is a field the editor can set, checked not trusted
-check(47, C.CORE_BUILD === 'SC1e-2026-11-23-fullcontrol', 'core ' + C.CORE_BUILD);
+check(47, /^SC1[e-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const sp = C.PLAN_TOOL.input_schema.properties, shp = sp.shots.items.properties;
 check(48, ['speed', 'motion', 'zoom', 'focus', 'text', 'text_pos', 'fit', 'blur', 'label'].every(k => shp[k]) && ['headline', 'lower_third', 'background', 'shade', 'logo', 'end_card', 'end_seconds', 'end_line', 'end_small'].every(k => sp.look.properties[k]) && sp.cut,
   'the edit tool has every per-shot and reel-wide knob');
@@ -202,12 +202,42 @@ const fp = C.validatePlan({ template: 'walk', look: { headline: 'none', lower_th
           { footage: 1, in: 0, out: 2, speed: 9, motion: 'spin', zoom: 7, focus: { x: -3 }, text_pos: 'side' }] }, footage);
 const f0 = fp.shots[0], f1 = fp.shots[1];
 check(49, f0.speed === 2 && f0.motion === 'left' && f0.zoom === 2.2 && f0.focus.x === 0.1 && f0.focus.y === 0.9 && f0.text === 'IS PPF WORTH IT?' && f0.text_pos === 'top', 'shot knobs pass through ' + JSON.stringify(f0).slice(0, 160));
-check(50, f1.speed === 4 && f1.motion === 'auto' && f1.zoom === 3 && f1.focus.x === 0 && f1.focus.y === 0.5 && f1.text_pos === 'center', 'out-of-range knobs clamped or defaulted ' + JSON.stringify(f1).slice(0, 160));
-check(51, fp.look.headline === 'none' && fp.look.lower === 'off' && fp.look.bg === 'black' && fp.look.shade === false && fp.look.logo === false && fp.look.end === true && fp.look.endLen === 5 && fp.look.cta === 'Book now' && fp.look.tag.length === 40 && !('bogus' in fp.look) && Math.abs(fp.length - 2.5) < 0.01,
+check(50, f1.speed === 9 && f1.motion === 'auto' && f1.zoom === 3 && f1.focus.x === 0 && f1.focus.y === 0.5 && f1.text_pos === 'center', 'out-of-range knobs clamped or defaulted ' + JSON.stringify(f1).slice(0, 160));
+check(51, fp.look.headline === 'none' && fp.look.lower === 'off' && fp.look.bg === 'black' && fp.look.shade === false && fp.look.logo === false && fp.look.end === true && fp.look.endLen === 5 && fp.look.cta === 'Book now' && fp.look.tag.length === 40 && !('bogus' in fp.look) && Math.abs(fp.length - (2 + 2 / 9)) < 0.01,
   'look checked; the on-screen length counts speed (' + fp.length + 's)');
 const slim = C.slimPlan(fp), rq2 = C.buildRequest({ footage, style: { rules: [], examples: [] } });
 check(52, slim.look && slim.shots[0].speed === 2 && slim.shots[0].text && slim.shots[0].focus && /never tell the owner the renderer adds something you cannot change/.test(rq2.system) && /speed \(slow motion or sped up\)/.test(rq2.system),
   'a redo sees every knob; the brief tells the editor it controls them');
+
+// 53-60 SC1f - it learns: the owner's hand changes become lessons; lessons and notes ride on every request
+check(53, C.CORE_BUILD === 'SC1f-2026-11-23-learns', 'core ' + C.CORE_BUILD);
+const sp16 = C.validatePlan({ template: 'walk', shots: [{ footage: 1, in: 0, out: 4, speed: 40, what: 'PPF going on the hood' }], footage_notes: [{ footage: 1, what: 'PPF install, hood' }] }, footage);
+check(54, sp16.shots[0].speed === 16 && sp16.shots[0].what === 'PPF going on the hood' && sp16.footage_notes[0].what === 'PPF install, hood' && /4 to 16 = time-lapse/.test(C.PLAN_TOOL.input_schema.properties.shots.items.properties.speed.description), 'time-lapse up to 16x; shots and footage carry what they show');
+const aiCut = { template: 'walk', cut: 'dip', look: {}, footage_notes: [{ footage: 3, what: 'cutting PPF by hand' }],
+  shots: [{ footage: 1, in: 0, out: 8, speed: 4, what: 'polish going on the pad' }, { footage: 2, in: 0, out: 2, speed: 1, what: 'wide shot of the lot' },
+          { footage: 1, in: 10, out: 12, speed: 1, what: 'finished hood', text: 'FINISHED', text_pos: 'center' }] };
+const fin = { template: 'walk', cut: 'hard', look: { headline: 'auto', lower_third: 'auto', background: 'black', shade: true, logo: true, end_card: true },
+  shots: [{ footage: 1, in: 0, out: 4, speed: 1 }, { footage: 3, in: 5, out: 9, speed: 1 }, { footage: 1, in: 10, out: 12, speed: 1, text: 'FINISHED', text_pos: 'top' }] };
+const L = C.diffPlans(aiCut, fin), Lt = L.join(' | ');
+check(55, /slowed "polish going on the pad" from 4x to real time \(1x\)/.test(Lt) && /removed "wide shot of the lot"/.test(Lt) && /added a shot from F3 \("cutting PPF by hand"\).*at real time/.test(Lt)
+  && /moved the text on "finished hood" to the top/.test(Lt) && /cuts from dip to hard/.test(Lt) && /background behind fit shots to black/.test(Lt) && !/logo|shade|service bar|headline/.test(Lt), 'the diff reads like an editor\'s notes: ' + Lt);
+check(56, C.diffPlans(aiCut, JSON.parse(JSON.stringify(aiCut))).length === 0, 'no changes -> no lesson');
+const ls2store = fakeStore();
+await C.handleApi({ method: 'POST', op: 'style', query: {}, body: { rules: ['Hard cuts only'] }, store: ls2store, env });
+const ap = await C.handleApi({ method: 'POST', op: 'approve', query: {}, body: { plan: fin, ai: aiCut, note: '' }, store: ls2store, env });
+await C.handleApi({ method: 'POST', op: 'feedback', query: {}, body: { text: 'Keep the PPF cutting at real time', plan: fin }, store: ls2store, env });
+await C.handleApi({ method: 'POST', op: 'feedback', query: {}, body: { text: 'Hard cuts only', rule: false, plan: fin }, store: ls2store, env });
+const stl = await C.handleApi({ method: 'GET', op: 'style', query: {}, store: ls2store, env });
+check(57, ap.status === 200 && /slowed/.test(ap.json.lesson) && stl.json.lessons.length === 1 && stl.json.feedback.length === 2, 'export of an AI cut stores the lesson; style lists lessons and notes');
+const rqL = C.buildRequest({ footage, style: await C.readStyle(ls2store) });
+const tL = rqL.messages[0].content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+check(58, /What the owner changed by hand on your recent cuts/.test(tL) && /slowed "polish going on the pad"/.test(tL) && /recent notes on past reels/.test(tL) && /Keep the PPF cutting at real time/.test(tL)
+  && (tL.match(/Hard cuts only/g) || []).length === 1, 'the next request carries the lessons and the notes (a note that is already a rule only once)');
+check(59, /time-lapse the long stretches/.test(rqL.system) && /real time \(1x\) for the satisfying detail moments/.test(rqL.system), 'the brief explains mixed-speed process reels');
+const lat = stl.json.lessons[0].at;
+const delL = await C.handleApi({ method: "POST", op: "learn-del", query: {}, body: { kind: "lesson", at: lat }, store: ls2store, env });
+const badL = await C.handleApi({ method: "POST", op: "learn-del", query: {}, body: { kind: 'x', at: lat }, store: ls2store, env });
+check(60, delL.status === 200 && delL.json.lessons.length === 0 && badL.status === 400, 'a wrong lesson can be forgotten');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
