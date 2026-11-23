@@ -132,7 +132,7 @@ const forcedRefused = async (url, opt) => { const b = JSON.parse(opt.body);
 await C.handleApi({ method: 'POST', op: 'frames', query: { job: 'f1', i: '0' }, body: { frames: footage[0].frames }, store, env });
 await C.handleApi({ method: 'POST', op: 'frames', query: { job: 'f1', i: '1' }, body: { frames: footage[1].frames }, store, env });
 const rf = await C.runPlan({ body: { job: 'f1', footage: meta.slice(0, 2) }, store, fetchImpl: forcedRefused, env });
-check(33, rf.ok && C.CORE_BUILD === 'SC1c-2026-11-23-toolauto', 'a model that refuses a forced tool still gets the job: ' + (rf.error || 'ok'));
+check(33, rf.ok && /^SC1[c-z]-/.test(C.CORE_BUILD), 'a model that refuses a forced tool still gets the job: ' + (rf.error || 'ok'));
 const calls = [];
 const lazyFetch = async (url, opt) => { const b = JSON.parse(opt.body); calls.push(b);
   if (calls.length === 1) return { ok: true, status: 200, text: async () => JSON.stringify({ content: [{ type: 'text', text: 'Here is my thinking about the reel.' }], stop_reason: 'end_turn', usage: { input_tokens: 4000, output_tokens: 50 } }) };
@@ -150,6 +150,47 @@ await C.handleApi({ method: 'POST', op: 'frames', query: { job: 'f3', i: '0' }, 
 await C.runPlan({ body: { job: 'f3', footage: meta.slice(0, 1) }, store, fetchImpl: never, env });
 const f3 = await store.get('job/f3', { type: 'json' });
 check(36, f3.status === 'error' && /did not return an edit/.test(f3.error), 'two replies with no edit -> the job says so');
+
+// 37-44 SC1d - saved projects: the edit is saved online, never the footage
+check(37, C.CORE_BUILD === 'SC1d-2026-11-23-projects', 'core ' + C.CORE_BUILD);
+const ps = fakeStore();
+const proj = { id: 'p1abc', name: 'G-Wagon ceramic', v: 1, len: 14.2, thumb: 'data:image/jpeg;base64,' + 'A'.repeat(200),
+  footage: [{ key: 'IMG_0594.mov|52000000|1700000000000', name: 'IMG_0594.mov', size: 52000000, kind: 'video', dur: 28.4 }],
+  shots: [{ f: 0, inT: 1.2, outT: 3.4, label: 'BEFORE', fit: 'fill', audio: true, blurs: [{ x: 0.3, y: 0.6, w: 0.2, h: 0.05 }] }],
+  tpl: 'ba', title: 'G-Wagon', service: 'Ceramic', cta: 'Book at excesslook.com', tag: 'Newport Beach, CA' };
+const sv = await C.handleApi({ method: 'POST', op: 'proj-save', query: {}, body: { project: proj }, store: ps, env });
+const gp = await C.handleApi({ method: 'GET', op: 'proj-get', query: { id: 'p1abc' }, store: ps, env });
+check(38, sv.status === 200 && gp.status === 200 && gp.json.project.shots[0].label === 'BEFORE' && gp.json.project.shots[0].blurs[0].w === 0.2
+  && gp.json.project.footage[0].key === proj.footage[0].key && gp.json.project.created && gp.json.project.updated, 'project saved and read back whole');
+const ls = await C.handleApi({ method: 'GET', op: 'proj-list', query: {}, store: ps, env });
+check(39, ls.json.projects.length === 1 && ls.json.projects[0].name === 'G-Wagon ceramic' && ls.json.projects[0].shots === 1 && ls.json.projects[0].keys[0] === proj.footage[0].key && !ls.json.projects[0].footageData, 'list line: name, counts, footage keys, thumb');
+const created1 = gp.json.project.created;
+await new Promise(r => setTimeout(r, 15));
+await C.handleApi({ method: 'POST', op: 'proj-save', query: {}, body: { project: Object.assign({}, proj, { name: 'G-Wagon v2', created: 'x' }) }, store: ps, env });
+await new Promise(r => setTimeout(r, 15));
+await C.handleApi({ method: 'POST', op: 'proj-save', query: {}, body: { project: Object.assign({}, proj, { id: 'p2abc', name: 'Model 3' }) }, store: ps, env });
+const ls2 = await C.handleApi({ method: 'GET', op: 'proj-list', query: {}, store: ps, env });
+const g2 = await C.handleApi({ method: 'GET', op: 'proj-get', query: { id: 'p1abc' }, store: ps, env });
+check(40, ls2.json.projects.length === 2 && ls2.json.projects[0].name === 'Model 3' && g2.json.project.name === 'G-Wagon v2' && g2.json.project.created === created1, 'resave replaces in place, keeps its created date; newest first');
+const big = await C.handleApi({ method: 'POST', op: 'proj-save', query: {}, body: { project: Object.assign({}, proj, { id: 'p3', blob: 'x'.repeat(500000) }) }, store: ps, env });
+const badId = await C.handleApi({ method: 'POST', op: 'proj-save', query: {}, body: { project: Object.assign({}, proj, { id: '../etc' }) }, store: ps, env });
+check(41, big.status === 413 && badId.status === 400, 'too big refused (413), bad id refused (400)');
+const badThumb = await C.handleApi({ method: 'POST', op: 'proj-save', query: {}, body: { project: Object.assign({}, proj, { id: 'p4', thumb: 'javascript:alert(1)' }) }, store: ps, env });
+const g4 = await C.handleApi({ method: 'GET', op: 'proj-get', query: { id: 'p4' }, store: ps, env });
+check(42, badThumb.status === 200 && !g4.json.project.thumb, 'a thumbnail that is not a small JPEG is dropped');
+const del = await C.handleApi({ method: 'POST', op: 'proj-del', query: { id: 'p1abc' }, body: {}, store: ps, env });
+const g404p = await C.handleApi({ method: 'GET', op: 'proj-get', query: { id: 'p1abc' }, store: ps, env });
+const ls3 = await C.handleApi({ method: 'GET', op: 'proj-list', query: {}, store: ps, env });
+check(43, del.status === 200 && g404p.status === 404 && !ls3.json.projects.some(x => x.id === 'p1abc'), 'delete removes the project and its list line');
+check(44, !store.m.has('projects') && [...ps.m.keys()].every(k => k === 'projects' || k.startsWith('proj/')), 'projects live under proj/ and the index only');
+
+// 45-46 ST1e cuts - hard by default, the editor can set dip / flash, the brief tells it so
+const pc0 = C.validatePlan({ template: 'walk', shots: [{ footage: 1, in: 0, out: 2 }] }, footage);
+const pc1 = C.validatePlan({ template: 'walk', cut: 'dip', shots: [{ footage: 1, in: 0, out: 2 }] }, footage);
+const pc2 = C.validatePlan({ template: 'walk', cut: 'wipe', shots: [{ footage: 1, in: 0, out: 2 }] }, footage);
+check(45, pc0.cut === 'hard' && pc1.cut === 'dip' && pc2.cut === 'hard', 'cut: hard unless dip or flash');
+const rq = C.buildRequest({ footage, style: { rules: [], examples: [] } });
+check(46, rq.tools[0].input_schema.properties.cut.enum.join() === 'hard,dip,flash' && /hard cuts/.test(rq.system) && /never say the studio adds transitions/.test(rq.system), 'the editor knows it sets the cut');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);

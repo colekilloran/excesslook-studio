@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1c-2026-11-23-toolauto';
+export const CORE_BUILD = 'SC1d-2026-11-23-projects';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -35,6 +35,8 @@ export const PLAN_TOOL = {
     properties: {
       template: { type: 'string', enum: ['ba', 'walk', 'reveal'],
         description: 'ba = Before / After (first shot labeled BEFORE, last AFTER). walk = Walkaround (title card then service lower third). reveal = slow push-in, headline on the last shot.' },
+      cut: { type: 'string', enum: ['hard', 'dip', 'flash'],
+        description: 'How one shot changes to the next. hard = a straight cut (the house style, use it unless the owner asks otherwise). dip = a quick dip to black. flash = a quick white flash.' },
       title: { type: 'string', description: 'Headline, max 40 characters. Usually the vehicle (e.g. "Porsche 911 GT3"). Empty if you cannot tell the vehicle from the footage - never guess a model year.' },
       service: { type: 'string', description: 'Service line, max 48 characters, e.g. "Paint Correction + Ceramic Coating".' },
       shots: {
@@ -92,6 +94,7 @@ export const EDITOR_BRIEF = [
   '- Close-ups carry the reel: pad on paint, foam, mitt, brush, squeegee, water beading. Use a wide shot only to place the car or for the final reveal.',
   '- Text: one idea at a time, short, bold, centered in the safe area. Caps for offers and prices. For a process reel, a short caption naming each step.',
   '- End on the finished car, then a short call to book ("Book now"). When it fits, end on the same shot the reel opened with so it loops.',
+  '- Cuts between shots are straight hard cuts (cut = hard). Use dip or flash only when the owner asks for it. You control this - never say the studio adds transitions you cannot change.',
   '- Reel types that work for this shop - pick the one the footage supports: Flash transitions (the same angle dirty then clean, cut back and forth, best with template ba); Hook + proof (a question as the first text, then the close-ups that answer it); Single satisfying take (one long steady shot, no text, when the footage is one clean continuous move); Process with step captions + finished reveal + book now; Offer promo (rotating short offer text over fast foam / wash close-ups).',
   '',
   'Always follow the owner\'s rules below over these defaults. When the owner gave notes on a previous draft, apply every note.'
@@ -204,6 +207,7 @@ export function validatePlan(raw, footage) {
     .map(t => String(t || '').replace(/^#+/, '').replace(/[^A-Za-z0-9_]/g, '')).filter(Boolean).slice(0, 15);
   return {
     template: tpl,
+    cut: ['hard', 'dip', 'flash'].includes(raw.cut) ? raw.cut : 'hard',
     title: clean(raw.title, 40),
     service: clean(raw.service, 48),
     shots,
@@ -356,5 +360,56 @@ export async function handleApi({ method, op, query, body, store, env }) {
     await writeStyle(store, s);
     return J(200, { saved: true, examples: s.examples.length });
   }
+  /* SC1d - saved projects (Cole: "a way to save a video and settings for how the video was created so i can
+     come back to it" - chose "settings online, footage on device"). A project is the edit, never the footage:
+     shots, trims, labels, blur boxes, template, text, music name, the AI review. proj/<id> holds it; the
+     projects index holds one small line per project for the list. Last save wins. */
+  if (op === 'proj-list' && method === 'GET') {
+    const idx = await readProjIndex(store);
+    return J(200, { projects: idx.sort((a, b) => String(b.updated).localeCompare(String(a.updated))) });
+  }
+  if (op === 'proj-get' && method === 'GET') {
+    const id = safeId(query.id);
+    if (!id) return J(400, { error: 'bad project id' });
+    const p = await store.get(projKey(id), { type: 'json' });
+    return p ? J(200, { project: p }) : J(404, { error: 'That project is gone' });
+  }
+  if (op === 'proj-save' && method === 'POST') {
+    const p = body && body.project;
+    const id = safeId(p && p.id);
+    if (!id || id !== String(p.id)) return J(400, { error: 'bad project id' });
+    const txt = JSON.stringify(p);
+    if (txt.length > PROJ_MAX) return J(413, { error: 'Project too big to save (' + Math.round(txt.length / 1024) + ' KB)' });
+    if (p.thumb && (typeof p.thumb !== 'string' || !/^data:image\/jpeg;base64,/.test(p.thumb) || p.thumb.length > 60000)) delete p.thumb;
+    const now = new Date().toISOString();
+    const old = await store.get(projKey(id), { type: 'json' });
+    const saved = Object.assign({}, p, { id, name: clean(p.name, 60) || 'Untitled reel', created: (old && old.created) || p.created || now, updated: now, core: CORE_BUILD });
+    await store.setJSON(projKey(id), saved);
+    const idx = (await readProjIndex(store)).filter(x => x.id !== id);
+    idx.push(projLine(saved));
+    await store.setJSON(PROJ_INDEX, idx.slice(-PROJ_KEEP));
+    return J(200, { saved: true, id, updated: now, created: saved.created });
+  }
+  if (op === 'proj-del' && method === 'POST') {
+    const id = safeId(query.id || (body && body.id));
+    if (!id) return J(400, { error: 'bad project id' });
+    await store.delete(projKey(id));
+    const idx = (await readProjIndex(store)).filter(x => x.id !== id);
+    await store.setJSON(PROJ_INDEX, idx);
+    return J(200, { deleted: true, id });
+  }
   return J(404, { error: 'unknown op' });
+}
+const PROJ_INDEX = 'projects', PROJ_MAX = 400000, PROJ_KEEP = 300;
+const projKey = id => 'proj/' + safeId(id);
+async function readProjIndex(store) {
+  const x = await store.get(PROJ_INDEX, { type: 'json' });
+  return Array.isArray(x) ? x : [];
+}
+function projLine(p) {
+  const shots = Array.isArray(p.shots) ? p.shots : [];
+  const foot = Array.isArray(p.footage) ? p.footage : [];
+  return { id: p.id, name: p.name, created: p.created, updated: p.updated, thumb: p.thumb || '',
+    len: Number(p.len) || 0, shots: shots.length, footage: foot.length,
+    keys: foot.map(f => String(f && f.key || '')).filter(Boolean).slice(0, 40) };
 }

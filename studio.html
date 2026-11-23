@@ -598,7 +598,7 @@ body.rm .xl-act.urgent{animation:none}
 
 </style>
 <style>
-/* ══ REEL STUDIO - ST1d ══════════════════════════════════════════════════════
+/* ══ REEL STUDIO - ST1e ══════════════════════════════════════════════════════
    Raw footage in, finished reel out. An AI editor plans the cut from stills,
    this page renders it. Everything runs on the device: clips are read from
    the files you pick, the reel is drawn on a canvas and encoded by the
@@ -756,6 +756,43 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
   .ai-row .xl-btn{width:100%}
   .rev-btns .xl-btn{flex:1}
 }
+/* ST1e saved projects: the bar under the title, the list sheet, the re-add card */
+.proj-bar{display:flex;align-items:center;gap:10px;padding:11px 12px 11px 16px;border-radius:16px;background:#121217;border:1px solid var(--hair);margin:0 0 24px;position:relative;overflow:hidden}
+.proj-name{flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;padding:0;color:var(--white);font-family:Montserrat,sans-serif;cursor:pointer}
+.proj-name svg{width:15px;height:15px;flex:none;fill:none;stroke:var(--dim);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.proj-name .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-name .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.proj-bar.err .proj-name .s{color:#E5484D}
+.proj-bar.local .proj-name .s{color:var(--gold)}
+.proj-bar .xl-add{margin-left:0;flex:none}
+.proj-bar .shim{position:absolute;left:0;right:0;bottom:0;height:2px;opacity:0;transition:opacity .2s}
+.proj-bar.busy .shim{opacity:1}
+.pj-t{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;color:var(--white);margin:0 0 4px}
+.pj-t span{color:var(--gold)}
+.pj-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+.pj-list{display:flex;flex-direction:column;gap:8px}
+.pj-row{display:flex;align-items:center;gap:12px;padding:9px 10px 9px 9px;border-radius:14px;background:#14141A;border:1px solid var(--hair);color:var(--white);font-family:Montserrat,sans-serif;text-align:left;width:100%;cursor:pointer}
+.pj-row.cur{border-color:rgba(200,169,81,.55);background:linear-gradient(180deg,rgba(200,169,81,.08),#14141A)}
+.pj-row img,.pj-row .pj-ph{width:40px;height:71px;flex:none;border-radius:8px;object-fit:cover;background:#000;border:1px solid var(--hair)}
+.pj-row .s{font-variant-numeric:tabular-nums}
+.pj-row .here{color:var(--gold)}
+.pj-empty{padding:26px 8px;text-align:center;color:var(--muted);font-size:13.5px}
+.pj-skel{height:91px;border-radius:14px;background:linear-gradient(90deg,#141419 0%,#1d1d24 50%,#141419 100%);background-size:200% 100%;animation:pjsk 1.2s linear infinite}
+@keyframes pjsk{from{background-position:200% 0}to{background-position:-200% 0}}
+@media(prefers-reduced-motion:reduce){.pj-skel{animation:none}}
+.miss{display:none;margin-top:12px;padding:14px;border-radius:16px;background:#14120C;border:1px dashed rgba(200,169,81,.5)}
+.miss.on{display:block}
+.miss-t{font-size:14px;font-weight:700;color:var(--gold);margin-bottom:4px}
+.miss-s{font-size:12.5px;color:var(--muted);line-height:1.4;margin-bottom:10px}
+.miss-l{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.miss-l div{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--white)}
+.miss-l div span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.miss-l div em{font-style:normal;color:var(--dim);font-variant-numeric:tabular-nums;flex:none}
+.miss .rev-btns{margin-top:0}
+@media(max-width:520px){
+  .proj-bar{padding:10px 10px 10px 13px;gap:8px}
+  .proj-name svg{display:none}
+}
 /* ST1d "See It": every edit already shows live in the preview, but on a phone the preview has scrolled
    away by the time you edit a shot - this floating button brings it back and plays the change. */
 .see-it{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));z-index:60;display:flex;align-items:center;gap:8px;
@@ -789,11 +826,28 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
   <div class="nav-small">REEL <span style="color:var(--gold)">STUDIO</span></div>
 </div>
 
+<div class="xl-veil" id="pj-veil"></div>
+<div class="xl-sheet" id="pj-sheet" role="dialog" aria-label="Saved reels">
+  <div class="xl-grabber" id="pj-grab"></div>
+  <div class="pj-t">SAVED <span>REELS</span></div>
+  <div class="pj-sub" id="pj-sub">Every reel saves as you edit. Clips stay on the device that made them.</div>
+  <div class="pj-list" id="pj-list"></div>
+</div>
 <button id="see-it" class="see-it xl-glass" type="button" aria-label="See the change in the preview"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>See It</button>
 <div id="scroller">
 <div class="wrap">
   <div class="nav-large" id="large-title">REEL <span style="color:var(--gold)">STUDIO</span></div>
   <div class="lede">Drop in the raw footage from a job and tap Make My Reel. The editor picks the moments and cuts an Instagram and TikTok ready MP4. Your video stays on this device - only small stills go to the editor.</div>
+
+  <div class="proj-bar" id="proj-bar">
+    <button class="proj-name" id="proj-name" type="button" aria-label="Rename this reel">
+      <span class="xl-row-txt"><span class="t" id="proj-title">New reel</span><span class="s" id="proj-st">Add footage to start - it saves as you go</span></span>
+      <svg width="15" height="15" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
+    </button>
+    <button class="xl-add press" id="btn-new" type="button">New</button>
+    <button class="xl-add press" id="btn-projects" type="button">Projects</button>
+    <div class="shim"><i id="proj-shim" style="width:100%"></i></div>
+  </div>
 
   <div class="studio">
     <!-- ── PREVIEW ───────────────────────────────────────────────────── -->
@@ -835,6 +889,7 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
           <span>Add raw videos and photos from the job</span>
         </button>
       </div>
+      <div class="miss" id="miss"></div>
       <input type="file" id="file-clips" accept="video/*,image/*" multiple hidden>
       </div>
 
@@ -889,6 +944,12 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
         <button data-tpl="reveal">Reveal</button>
       </div>
       <div class="tpl-hint" id="tpl-hint"></div>
+      <div class="xl-f" style="margin:14px 0 0"><label>Between shots</label></div>
+      <div class="xl-seg" id="cut-seg">
+        <button data-cut="hard" type="button">Hard Cut</button>
+        <button data-cut="dip" type="button">Dip to Black</button>
+        <button data-cut="flash" type="button">Flash</button>
+      </div>
 
       <div class="xl-h2">TEXT <span class="ln"></span></div>
       <div class="xl-row">
@@ -2354,7 +2415,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1d-2026-11-23-seeit';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1e-2026-11-23-projects';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -2376,9 +2437,10 @@ const TPL = {
 };
 
 const S = {
-  tpl: 'ba', title: '', service: '', cta: 'Book at excesslook.com', tag: 'Newport Beach, CA',
+  tpl: 'ba', cut: 'hard', title: '', service: '', cta: 'Book at excesslook.com', tag: 'Newport Beach, CA',
   clips: [], music: null, sel: null, safe: false,
-  sources: [], plan: null, sampled: null, usage: null
+  sources: [], plan: null, sampled: null, usage: null,
+  missing: [], waiting: [], musicMissing: null        // ST1e: a saved reel's clips that are not on this device yet
 };
 let uid = 0;
 
@@ -2562,7 +2624,7 @@ function drawOutro(ctx, local) {
   if (S.tag) { track(ctx, 3); fit(ctx, S.tag.toUpperCase(), 36, FF, '600', 860, 20); ctx.fillStyle = '#8E8E97'; ctx.fillText(S.tag.toUpperCase(), OUT_W / 2, 1200 + 20 * (1 - q)); }
   ctx.restore();
   // fade in from the last clip
-  if (local < 0.25) { ctx.fillStyle = 'rgba(0,0,0,' + (1 - local / 0.25) + ')'; ctx.fillRect(0, 0, OUT_W, OUT_H); }
+  if (S.cut === 'dip' && local < 0.25) { ctx.fillStyle = 'rgba(0,0,0,' + (1 - local / 0.25) + ')'; ctx.fillRect(0, 0, OUT_W, OUT_H); }
 }
 function drawFrame(ctx, t, P, opts) {
   const o = opts || {};
@@ -2612,14 +2674,14 @@ function drawFrame(ctx, t, P, opts) {
     headline(ctx, S.title, S.service, OUT_W / 2, 1250, a, ease((local - st) / 0.8));
   }
 
-  // cut: a short dip at each edge; a flash into AFTER on Before / After
-  if (S.tpl === 'ba' && seg.i > 0 && local < 0.3) {
+  // ST1e cuts (Cole: "I need to remove this black out transition effect. Just a hard cut would look so much
+  // better"). hard (default) = a straight cut, nothing drawn. dip = the old short dip to black at each edge.
+  // flash = a white flash into every shot after the first.
+  if (S.cut === 'flash' && seg.i > 0 && local < 0.3) {
     ctx.fillStyle = 'rgba(255,255,255,' + (0.75 * (1 - local / 0.3)) + ')'; ctx.fillRect(0, 0, OUT_W, OUT_H);
-  } else if (seg.i > 0 && local < 0.15) {
-    ctx.fillStyle = 'rgba(0,0,0,' + (1 - local / 0.15) + ')'; ctx.fillRect(0, 0, OUT_W, OUT_H);
-  }
-  if (local > seg.dur - 0.15 && !(S.tpl === 'ba' && seg.i < seg.n - 1)) {
-    ctx.fillStyle = 'rgba(0,0,0,' + ((local - (seg.dur - 0.15)) / 0.15) + ')'; ctx.fillRect(0, 0, OUT_W, OUT_H);
+  } else if (S.cut === 'dip') {
+    if (seg.i > 0 && local < 0.15) { ctx.fillStyle = 'rgba(0,0,0,' + (1 - local / 0.15) + ')'; ctx.fillRect(0, 0, OUT_W, OUT_H); }
+    if (local > seg.dur - 0.15) { ctx.fillStyle = 'rgba(0,0,0,' + ((local - (seg.dur - 0.15)) / 0.15) + ')'; ctx.fillRect(0, 0, OUT_W, OUT_H); }
   }
   ctx.restore();
 }
@@ -2780,14 +2842,20 @@ async function addFiles(list) {
     const r = await loadClip(f);
     if (!r.c) { toast('Could not open ' + f.name + ' - ' + r.why, true); continue; }
     await thumb(r.c);
+    r.c.key = fileKey(f);
+    keepFile(r.c.key, f);
     r.c.fid = S.sources.length + 1;
     S.sources.push(r.c);
+    const back = refill(r.c, f);                      // ST1e: a clip a saved reel was waiting for
+    if (back) { added.push(...back); continue; }
     const shot = shotFrom(r.c, {});
     S.clips.push(shot); added.push(shot);
   }
-  if (added.length) {
+  if (added.length || refilled) {
+    refilled = false;
     S.sampled = null;
-    renderFootage(); renderClips(); replan(true);
+    renderFootage(); renderClips(); renderMissing(); replan(true);
+    if (!added.length) { toast('Clip back in place'); return added; }
     selectClip(added[0].id, true);
     toast(added.length === 1 ? 'Clip added' : added.length + ' clips added');
   }
@@ -3020,17 +3088,19 @@ function renderMusic() {
   }
   K.pressAll(host);
 }
-async function addMusic(file) {
+async function addMusic(file, quiet) {
   if (!file) return;
   const url = URL.createObjectURL(file);
   const a = new Audio();
   const ok = await new Promise(r => { a.onloadedmetadata = () => r(true); a.onerror = () => r(false); a.src = url; setTimeout(() => r(false), 15000); });
   if (!ok) { URL.revokeObjectURL(url); toast('Could not read ' + file.name, true); return; }
   if (S.music) URL.revokeObjectURL(S.music.url);
-  S.music = { name: file.name, file, url, dur: a.duration || 0, vol: 0.8 };
+  S.music = { name: file.name, file, url, dur: a.duration || 0, vol: 0.8, key: fileKey(file) };
+  if (S.musicMissing) { S.music.vol = Number(S.musicMissing.vol) >= 0 ? Number(S.musicMissing.vol) : 0.8; S.musicMissing = null; renderMissing(); }
+  keepFile(S.music.key, file);
   musicEl.src = url;
   renderMusic();
-  toast('Music added');
+  if (!quiet) toast('Music added');
 }
 
 /* ── export ──────────────────────────────────────────────────────────── */
@@ -3195,8 +3265,9 @@ function fileName() {
   const slug = (S.title || 'reel').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'reel';
   return 'excess-look-' + slug + '-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.mp4';
 }
-function showResult(blob, info) {
+function showResult(blob, info, quiet) {
   lastBlob = blob;
+  if (!quiet) keepExport(blob, info);
   if (lastUrl) URL.revokeObjectURL(lastUrl);
   lastUrl = URL.createObjectURL(blob);
   $('res-video').src = lastUrl;
@@ -3206,7 +3277,7 @@ function showResult(blob, info) {
   $('result').classList.add('on');
   const canShare = !!(navigator.canShare && navigator.canShare({ files: [new File([blob], fileName(), { type: 'video/mp4' })] }));
   $('btn-share').style.display = canShare ? '' : 'none';
-  toast('Reel exported');
+  if (!quiet) toast('Reel exported');
 }
 $('btn-download').onclick = () => {
   if (!lastBlob) return;
@@ -3247,7 +3318,7 @@ function unlock() {
       'Enter the studio passcode once on this device.<input id="st-key" class="xl-input" type="password" autocomplete="current-password" placeholder="Passcode">',
       async () => {
         const el = $('st-key'); KEY = el ? el.value.trim() : '';
-        try { await api('ping'); try { localStorage.setItem('xl_studio_key', KEY); } catch (e) {} res(true); loadRules(true); }
+        try { await api('ping'); try { localStorage.setItem('xl_studio_key', KEY); } catch (e) {} res(true); loadRules(true); saveSoon(); }
         catch (e) { KEY = ''; toast(e.message, true); res(false); }
       }, { okText: 'Unlock', onCancel: () => res(false) });
     setTimeout(() => { const el = $('st-key'); if (el) el.focus(); }, 80);
@@ -3321,6 +3392,7 @@ function applyPlan(plan) {
   S.title = plan.title || ''; S.service = plan.service || '';
   $('f-title').value = S.title; $('f-service').value = S.service;
   setTpl(plan.template || 'walk');
+  if (plan.cut) setCut(plan.cut);
   seekTo(0);
   $('rev-why').textContent = plan.why || 'Here is the cut.';
   $('rev-cap').value = plan.caption || '';
@@ -3429,6 +3501,12 @@ $('btn-copy').onclick = async () => {
 };
 
 /* ── wiring ─────────────────────────────────────────────────────────── */
+function setCut(k) {
+  S.cut = ['hard', 'dip', 'flash'].includes(k) ? k : 'hard';
+  document.querySelectorAll('#cut-seg button').forEach(b => b.classList.toggle('on', b.dataset.cut === S.cut));
+  dirty(600);
+}
+document.querySelectorAll('#cut-seg button').forEach(b => b.addEventListener('click', () => { setCut(b.dataset.cut); edited(Math.max(0, (plan().segs[1] || { start: 0 }).start - 0.6)); }));
 function setTpl(k) {
   S.tpl = k;
   document.querySelectorAll('#tpl-seg button').forEach(b => b.classList.toggle('on', b.dataset.tpl === k));
@@ -3482,6 +3560,7 @@ $('logo-slot').innerHTML = K.logo('sm');
 K.init({ scroller: $('scroller'), nav: $('nav'), largeTitle: $('large-title') });
 K.hFade($('foot'));
 setTpl('ba');
+setCut('hard');
 renderMusic();
 renderFootage();
 loadRules(true);
@@ -3492,9 +3571,388 @@ Promise.all([
 requestAnimationFrame(t => { lastNow = t; loop(t); });
 
 /* test and console hooks */
+
+/* ══ ST1e - SAVED REELS ═══════════════════════════════════════════════════
+   Cole: "a way to save a video and settings for how the video was created so i can come back to it"
+   - he chose "settings online, footage on device".
+   - The EDIT saves online (studio-api proj-*): footage list (name, size, length), shots, trims, labels,
+     blur boxes, fit, sound, template, text, music name + volume, the AI review and notes. Any device
+     can open it.
+   - The CLIPS (and the music file and the last exported MP4) are kept on the device that added them, in
+     IndexedDB, keyed by name|size|date. On that device a reel reopens whole. On another device the
+     missing clips are listed; adding the same files back drops each shot back where it was.
+   - It saves by itself: every 2s the edit is compared with what was last saved and only a change is sent.
+     Without the passcode it is kept on this device and the bar says so; tapping it unlocks.
+   - Nothing here changes how a reel is cut or exported. */
+const IDB_NAME = 'xl-studio', IDB_STORE = 'files';
+let idbP = null;
+function idb() {
+  if (idbP) return idbP;
+  idbP = new Promise((res, rej) => {
+    if (!('indexedDB' in window)) { rej(new Error('no storage')); return; }
+    const r = indexedDB.open(IDB_NAME, 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(IDB_STORE)) r.result.createObjectStore(IDB_STORE); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  idbP.catch(() => { idbP = null; });
+  return idbP;
+}
+function idbDo(mode, fn) {
+  return idb().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, mode), st = tx.objectStore(IDB_STORE);
+    let out; const rq = fn(st); if (rq) rq.onsuccess = () => { out = rq.result; };
+    tx.oncomplete = () => res(out); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('aborted'));
+  }));
+}
+const idbGet = k => idbDo('readonly', st => st.get(k)).catch(() => undefined);
+const idbKeys = () => idbDo('readonly', st => st.getAllKeys()).then(k => new Set(k || []), () => new Set());
+const idbDel = k => idbDo('readwrite', st => st.delete(k)).catch(() => {});
+const fileKey = f => String(f.name || 'file') + '|' + (f.size || 0) + '|' + (f.lastModified || 0);
+let keepWarned = false, persistAsked = false;
+function keepFile(key, file) {
+  if (!key || !file) return;
+  if (!persistAsked && navigator.storage && navigator.storage.persist) { persistAsked = true; navigator.storage.persist().catch(() => {}); }
+  idbDo('readwrite', st => st.put({ file, name: file.name, type: file.type, mod: file.lastModified, size: file.size }, key)).catch(() => {
+    if (keepWarned) return; keepWarned = true;
+    toast('This device is out of room to keep the clips - the edit still saves, add the clips again next time', true);
+  });
+}
+function fileOf(rec, meta) {
+  if (!rec) return null;
+  const b = rec.file || rec.blob || rec;
+  if (!(b instanceof Blob)) return null;
+  return b instanceof File ? b : new File([b], (meta && meta.name) || rec.name || 'clip', { type: rec.type || b.type || '', lastModified: rec.mod || 0 });
+}
+function keepExport(blob, info) {
+  autosaveTick(true);
+  if (!PROJ) return;
+  idbDo('readwrite', st => st.put({ blob, info, at: Date.now() }, 'exp:' + PROJ.id)).catch(() => {});
+}
+
+let PROJ = null;                 // { id, name, named, created }
+let savedJs = '', triedJs = '', saving = false, retryAt = 0, restoring = false, refilled = false;
+const newProjId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const clockOf = d => { try { return new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+const dayOf = d => { try { const x = new Date(d), now = new Date(); const same = x.toDateString() === now.toDateString();
+  return same ? 'Today, ' + clockOf(d) : x.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + clockOf(d); } catch (e) { return ''; } };
+function autoName() {
+  if (S.title.trim()) return S.title.trim();
+  const f = S.sources[0] || (S.missing[0] && S.missing[0].meta);
+  const d = new Date().toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return 'Reel ' + d + (f ? ' - ' + String(f.name).replace(/\.[^.]+$/, '') : '');
+}
+function projName() { return PROJ && PROJ.named && PROJ.name ? PROJ.name : autoName(); }
+function setStatus(kind, text) {
+  const bar = $('proj-bar');
+  bar.classList.toggle('err', kind === 'err'); bar.classList.toggle('local', kind === 'local');
+  $('proj-st').textContent = text;
+  $('proj-title').textContent = (S.sources.length || S.missing.length || PROJ) ? projName() : 'New reel';
+}
+function busy(on) { $('proj-bar').classList.toggle('busy', !!on); }
+const r4 = x => Math.round((Number(x) || 0) * 10000) / 10000;
+function footMeta(f) {
+  const [w, h] = mediaSize(f);
+  return { key: f.key || '', name: f.name, size: f.file ? f.file.size : 0, mod: f.file ? f.file.lastModified : 0,
+    type: f.file ? f.file.type : '', kind: f.kind, dur: Math.round((f.srcDur || 0) * 1000) / 1000, w, h };
+}
+function shotMeta(c, f) {
+  return { f, inT: Math.round(c.inT * 1000) / 1000, outT: Math.round(c.outT * 1000) / 1000, label: c.label || '',
+    fit: c.fit, audio: !!c.audio, blurs: (c.blurs || []).map(b => ({ x: r4(b.x), y: r4(b.y), w: r4(b.w), h: r4(b.h) })) };
+}
+function projState() {
+  const footage = S.sources.map(footMeta).concat(S.missing.map(m => m.meta));
+  const shots = S.clips.map(c => shotMeta(c, S.sources.indexOf(c.src)));
+  S.waiting.forEach(w => {                          // shots still waiting for a clip keep their place
+    const at = Math.min(w.ord, shots.length);
+    shots.splice(at, 0, Object.assign({}, w.spec, { f: S.sources.length + S.missing.indexOf(w.miss) }));
+  });
+  const m = S.music ? { key: S.music.key || '', name: S.music.name, size: S.music.file ? S.music.file.size : 0, vol: Math.round(S.music.vol * 100) / 100, dur: S.music.dur || 0 } : (S.musicMissing || null);
+  const review = $('review').classList.contains('on');
+  return {
+    v: 1, footage, shots, tpl: S.tpl, cut: S.cut, title: S.title, service: S.service, cta: S.cta, tag: S.tag, music: m,
+    note: $('ai-note').value,
+    ai: (S.plan || review) ? { plan: S.plan || null, usage: S.usage || null, why: $('rev-why').textContent, caption: $('rev-cap').value,
+      tags: $('rev-tags').value, notes: $('rev-notes').value, meta: $('rev-meta').textContent } : null,
+    len: Math.round(plan().total * 100) / 100
+  };
+}
+function mirror(full) {
+  try {
+    localStorage.setItem('xl_studio_p_' + full.id, JSON.stringify(full));
+    localStorage.setItem('xl_studio_last', full.id);
+    let ids = []; try { ids = JSON.parse(localStorage.getItem('xl_studio_mirrors') || '[]'); } catch (e) {}
+    ids = ids.filter(x => x !== full.id); ids.push(full.id);
+    while (ids.length > 15) { const gone = ids.shift(); localStorage.removeItem('xl_studio_p_' + gone); }
+    localStorage.setItem('xl_studio_mirrors', JSON.stringify(ids));
+  } catch (e) {}
+}
+function mirrored(id) { try { return JSON.parse(localStorage.getItem('xl_studio_p_' + id) || 'null'); } catch (e) { return null; } }
+function hasWork() { return S.sources.length > 0 || S.missing.length > 0; }
+function autosaveTick(now) {
+  if (restoring || exporting || aiBusy) return;
+  if (!hasWork()) return;
+  const st = projState(), js = JSON.stringify(st);
+  if (js === savedJs && !now) return;
+  if (!PROJ) PROJ = { id: newProjId(), name: '', named: false, created: new Date().toISOString() };
+  const thumbSrc = (S.clips[0] && S.clips[0].src && S.clips[0].src.thumb) || (S.sources[0] && S.sources[0].thumb) || '';
+  const full = Object.assign({ id: PROJ.id, name: projName(), named: !!PROJ.named, created: PROJ.created, updated: new Date().toISOString(), build: XL_STUDIO_BUILD,
+    thumb: /^data:image\/jpeg;base64,/.test(thumbSrc) && thumbSrc.length < 60000 ? thumbSrc : '' }, st);
+  if (js !== triedJs || now) mirror(full);
+  if (saving) return;
+  if (!KEY) {
+    if (js !== triedJs) { triedJs = js; setStatus('local', 'Kept on this device - tap to save online'); }
+    return;
+  }
+  if (js === triedJs && Date.now() < retryAt) return;
+  triedJs = js; saving = true;
+  const mine = PROJ.id;
+  if ($('proj-st').textContent.indexOf('Saving') !== 0) setStatus('', 'Saving...');
+  api('proj-save', { body: { project: full } }).then(r => {
+    saving = false;
+    if (!PROJ || PROJ.id !== mine) return;           // the studio moved on (New / another reel) while this saved
+    if (r.status !== 200) throw new Error((r.json && r.json.error) || 'Not saved');
+    savedJs = js; retryAt = 0;
+    if (r.json && r.json.created) PROJ.created = r.json.created;
+    setStatus('', 'Saved ' + clockOf(r.json && r.json.updated || Date.now()));
+  }).catch(e => {
+    saving = false;
+    if (!PROJ || PROJ.id !== mine) return;
+    retryAt = Date.now() + 15000;
+    if (e && e.code === 401) { KEY = ''; try { localStorage.removeItem('xl_studio_key'); } catch (x) {} setStatus('local', 'Kept on this device - tap to save online'); return; }
+    setStatus('err', 'Not saved online yet - kept on this device, trying again');
+  });
+}
+function saveSoon() { triedJs = ''; retryAt = 0; setTimeout(() => autosaveTick(true), 50); }
+setInterval(() => autosaveTick(false), 2000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') autosaveTick(false); });
+
+function resetStudio() {
+  setPlaying(false);
+  S.sources.forEach(f => { try { if (f.el && f.el.parentNode) f.el.parentNode.removeChild(f.el); } catch (e) {} if (f.url) URL.revokeObjectURL(f.url); });
+  S.sources = []; S.clips = []; S.missing = []; S.waiting = []; S.musicMissing = null;
+  S.plan = null; S.usage = null; S.sampled = null; S.sel = null;
+  if (S.music) { musicEl.pause(); musicEl.removeAttribute('src'); URL.revokeObjectURL(S.music.url); }
+  S.music = null;
+  S.title = ''; S.service = ''; S.cta = 'Book at excesslook.com'; S.tag = 'Newport Beach, CA';
+  $('f-title').value = ''; $('f-service').value = ''; $('f-cta').value = S.cta; $('f-tag').value = S.tag;
+  $('ai-note').value = '';
+  $('review').classList.remove('on'); $('rev-why').textContent = ''; $('rev-cap').value = ''; $('rev-tags').value = ''; $('rev-notes').value = ''; $('rev-meta').textContent = '';
+  $('rev-rule').checked = false;
+  $('ai-status').classList.remove('err');
+  $('result').classList.remove('on'); lastBlob = null; if (lastUrl) { URL.revokeObjectURL(lastUrl); lastUrl = null; } $('res-video').removeAttribute('src');
+  setTpl('ba'); setCut('hard');
+  renderFootage(); renderClips(); renderMusic(); renderMissing(); replan(false); seekTo(0);
+  PROJ = null; savedJs = ''; triedJs = ''; retryAt = 0;
+  setStatus('', 'Add footage to start - it saves as you go');
+}
+
+/* a clip added back for a saved reel: find what it fills, put its shots back where they were */
+function refill(src, f) {
+  if (!S.missing.length) return null;
+  const base = n => String(n || '').toLowerCase().replace(/\.[^.]+$/, '');
+  let m = S.missing.find(x => x.meta.name === f.name && Number(x.meta.size) === f.size)
+    || S.missing.find(x => x.meta.name === f.name)
+    || S.missing.find(x => base(x.meta.name) === base(f.name) && x.meta.kind === src.kind);
+  if (!m) return null;
+  S.missing.splice(S.missing.indexOf(m), 1);
+  const mine = S.waiting.filter(w => w.miss === m).sort((a, b) => a.ord - b.ord);
+  S.waiting = S.waiting.filter(w => w.miss !== m);
+  const back = [];
+  mine.forEach(w => {
+    const sh = shotFromSpec(src, w.spec);
+    S.clips.splice(Math.min(w.ord, S.clips.length), 0, sh); back.push(sh);
+  });
+  refilled = true;
+  return back;
+}
+function shotFromSpec(src, sp) {
+  const img = src.kind === 'image';
+  const inT = img ? 0 : clamp(Number(sp.inT) || 0, 0, Math.max(0, src.srcDur - 0.3));
+  const outT = img ? clamp(Number(sp.outT) || 3, 1, 10) : clamp(Number(sp.outT) || src.srcDur, inT + 0.3, src.srcDur);
+  return shotFrom(src, { inT, outT, label: sp.label || '', fit: sp.fit === 'fit' || sp.fit === 'fill' ? sp.fit : src.fit,
+    audio: img ? false : sp.audio !== false, blurs: (Array.isArray(sp.blurs) ? sp.blurs : []).map(b => ({ x: +b.x || 0, y: +b.y || 0, w: +b.w || 0, h: +b.h || 0 })) });
+}
+function renderMissing() {
+  const host = $('miss'), n = S.missing.length, mu = S.musicMissing;
+  if (!n && !mu) { host.classList.remove('on'); host.innerHTML = ''; return; }
+  const rows = S.missing.map(m => '<div><span>' + esc(m.meta.name) + '</span><em>' + (m.meta.kind === 'video' ? fmt0(m.meta.dur) : 'Photo') + '</em></div>').join('')
+    + (mu ? '<div><span>Music: ' + esc(mu.name) + '</span><em>' + fmt0(mu.dur) + '</em></div>' : '');
+  const what = n ? n + ' clip' + (n === 1 ? '' : 's') + (mu ? ' and the music' : '') : 'The music';
+  host.innerHTML = '<div class="miss-t">' + what + ' to add back</div>'
+    + '<div class="miss-s">' + (n === 1 && !mu ? 'It is' : 'They are') + ' not on this device. Add the same file' + (n + (mu ? 1 : 0) === 1 ? '' : 's') + ' from Photos and every shot goes back where it was.</div>'
+    + '<div class="miss-l">' + rows + '</div>'
+    + '<div class="rev-btns">' + (n ? '<button class="xl-btn gold press" id="miss-add" type="button">Add Clips Back</button>' : '')
+    + (mu ? '<button class="xl-btn ghost press" id="miss-music" type="button">Add Music Back</button>' : '')
+    + '<button class="xl-btn ghost press" id="miss-drop" type="button">Leave Out</button></div>';
+  host.classList.add('on');
+  if ($('miss-add')) $('miss-add').onclick = () => $('file-clips').click();
+  if ($('miss-music')) $('miss-music').onclick = () => $('file-music').click();
+  $('miss-drop').onclick = () => {
+    const keep = { missing: S.missing.slice(), waiting: S.waiting.slice(), mu: S.musicMissing };
+    S.missing = []; S.waiting = []; S.musicMissing = null;
+    renderMissing(); replan(true);
+    K.toast('Left out of this reel', () => { S.missing = keep.missing; S.waiting = keep.waiting; S.musicMissing = keep.mu; renderMissing(); replan(true); });
+  };
+  K.pressAll(host);
+}
+
+async function restoreProject(p, quiet) {
+  restoring = true; busy(true);
+  try {
+    resetStudio();
+    PROJ = { id: p.id, name: p.name || '', named: !!p.named, created: p.created };
+    S.tpl = p.tpl || 'ba';
+    S.title = p.title || ''; S.service = p.service || '';
+    S.cta = p.cta != null ? p.cta : S.cta; S.tag = p.tag != null ? p.tag : S.tag;
+    $('f-title').value = S.title; $('f-service').value = S.service; $('f-cta').value = S.cta; $('f-tag').value = S.tag;
+    $('ai-note').value = p.note || '';
+    setStatus('', 'Opening...');
+    const foot = Array.isArray(p.footage) ? p.footage : [];
+    const slot = [];
+    for (let i = 0; i < foot.length; i++) {
+      const meta = foot[i];
+      setStatus('', 'Opening - clip ' + (i + 1) + ' of ' + foot.length);
+      const file = fileOf(await idbGet(meta.key), meta);
+      let src = null;
+      if (file) {
+        const r = await loadClip(file);
+        if (r.c) { await thumb(r.c); r.c.key = meta.key; r.c.fid = S.sources.length + 1; S.sources.push(r.c); src = r.c; }
+      }
+      if (src) slot[i] = { src };
+      else { const m = { meta }; S.missing.push(m); slot[i] = { miss: m }; }
+    }
+    (Array.isArray(p.shots) ? p.shots : []).forEach((sp, ord) => {
+      const sl = slot[sp.f]; if (!sl) return;
+      if (sl.src) S.clips.push(shotFromSpec(sl.src, sp));
+      else S.waiting.push({ spec: sp, miss: sl.miss, ord });
+    });
+    if (p.music && p.music.name) {
+      const mf = fileOf(await idbGet(p.music.key), p.music);
+      if (mf) { await addMusic(mf, true); if (S.music) S.music.vol = Number(p.music.vol) >= 0 ? Number(p.music.vol) : 0.8; }
+      else S.musicMissing = p.music;
+    }
+    if (p.ai) {
+      S.plan = p.ai.plan || null; S.usage = p.ai.usage || null;
+      $('rev-why').textContent = p.ai.why || ''; $('rev-cap').value = p.ai.caption || ''; $('rev-tags').value = p.ai.tags || '';
+      $('rev-notes').value = p.ai.notes || ''; $('rev-meta').textContent = p.ai.meta || '';
+      $('review').classList.add('on');
+    }
+    setTpl(S.tpl); setCut(p.cut || 'hard');
+    renderFootage(); renderClips(); renderMusic(); renderMissing(); replan(false); seekTo(0);
+    const ex = await idbGet('exp:' + p.id);
+    if (ex && ex.blob instanceof Blob && ex.info) showResult(ex.blob, ex.info, true);
+    savedJs = JSON.stringify(projState()); triedJs = savedJs;
+    try { localStorage.setItem('xl_studio_last', p.id); } catch (e) {}
+    const miss = S.missing.length + (S.musicMissing ? 1 : 0);
+    setStatus(KEY ? '' : 'local', (KEY ? 'Saved ' : 'Kept on this device - ') + (p.updated ? dayOf(p.updated) : ''));
+    if (!quiet || miss) toast(miss ? 'Opened - add ' + miss + ' file' + (miss === 1 ? '' : 's') + ' back' : 'Reel opened');
+  } finally { restoring = false; busy(false); }
+}
+async function openProject(id, quiet) {
+  let p = null;
+  if (KEY) {
+    try { const r = await api('proj-get', { query: { id } }); if (r.status === 200 && r.json) p = r.json.project; } catch (e) {}
+  }
+  const local = mirrored(id);
+  if (!p || (local && local.updated && p.updated && local.updated > p.updated)) p = local || p;   // newest copy wins
+  if (!p) { if (!quiet) toast('That reel could not be opened', true); return false; }
+  await restoreProject(p, quiet);
+  if (local && p === local && KEY) saveSoon();      // a copy only this device had goes online now
+  return true;
+}
+
+/* ── the Projects sheet ── */
+function sheetOpen(on) { $('pj-veil').classList.toggle('on', on); $('pj-sheet').classList.toggle('on', on); if (!on) $('pj-sheet').style.transform = ''; }
+K.sheet($('pj-sheet'), $('pj-grab'), { onClose: () => sheetOpen(false) });
+$('pj-veil').addEventListener('click', () => sheetOpen(false));
+async function listProjects() {
+  autosaveTick(true);
+  const host = $('pj-list');
+  host.innerHTML = '<div class="pj-skel"></div><div class="pj-skel"></div><div class="pj-skel"></div>';
+  sheetOpen(true);
+  let list = null, online = false;
+  if (KEY || await unlock()) {
+    try { const r = await api('proj-list'); if (r.status === 200) { list = r.json.projects || []; online = true; } } catch (e) {}
+  }
+  if (!list) {
+    let ids = []; try { ids = JSON.parse(localStorage.getItem('xl_studio_mirrors') || '[]'); } catch (e) {}
+    list = ids.map(mirrored).filter(Boolean).map(p => ({ id: p.id, name: p.name, updated: p.updated, thumb: p.thumb, len: p.len,
+      shots: (p.shots || []).length, footage: (p.footage || []).length, keys: (p.footage || []).map(f => f.key) }))
+      .sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
+  }
+  const have = await idbKeys();
+  $('pj-sub').textContent = online ? 'Every reel saves as you edit. Clips stay on the device that made them.' : 'Not online - showing the reels kept on this device.';
+  if (!list.length) { host.innerHTML = '<div class="pj-empty">No saved reels yet. Add footage and it saves by itself.</div>'; return; }
+  host.innerHTML = list.map(x => {
+    const keys = x.keys || [], here = keys.length && keys.every(k => have.has(k));
+    return '<div class="pj-row press' + (PROJ && PROJ.id === x.id ? ' cur' : '') + '" role="button" tabindex="0" data-id="' + esc(x.id) + '">'
+      + (x.thumb ? '<img alt="" width="40" height="71" src="' + esc(x.thumb) + '">' : '<div class="pj-ph"></div>')
+      + '<div class="xl-row-txt"><span class="t">' + esc(x.name || 'Untitled reel') + '</span>'
+      + '<span class="s">' + esc(dayOf(x.updated)) + ' - ' + fmt0(x.len) + ' - ' + (x.shots || 0) + ' shot' + (x.shots === 1 ? '' : 's') + '</span>'
+      + '<span class="s ' + (here ? 'here' : '') + '">' + (PROJ && PROJ.id === x.id ? 'Open now' : here ? 'Clips on this device' : keys.length ? 'Add the clips back to finish' : '') + '</span></div>'
+      + '<button class="ibtn press" type="button" data-del="' + esc(x.id) + '" aria-label="Delete this reel">' + IC.x + '</button></div>';
+  }).join('');
+  K.pressAll(host);
+  host.querySelectorAll('.pj-row').forEach(row => {
+    const id = row.dataset.id, x = list.find(y => y.id === id);
+    const go = async () => {
+      sheetOpen(false);
+      if (PROJ && PROJ.id === id) return;
+      autosaveTick(true);
+      toast('Opening ' + (x.name || 'reel'));
+      await openProject(id);
+    };
+    row.addEventListener('click', e => { if (e.target.closest('[data-del]')) return; go(); });
+    row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    row.querySelector('[data-del]').addEventListener('click', e => {
+      e.stopPropagation();
+      K.confirm('Delete this <span>reel</span>?', 'Deletes "' + esc(x.name || 'Untitled reel') + '" and how it was edited, on every device. Your clips in Photos are not touched.', async () => {
+        try {
+          if (KEY) { const r = await api('proj-del', { query: { id }, body: { id } }); if (r.status !== 200) throw new Error((r.json && r.json.error) || 'Not deleted'); }
+          try { localStorage.removeItem('xl_studio_p_' + id); const ids = JSON.parse(localStorage.getItem('xl_studio_mirrors') || '[]').filter(y => y !== id); localStorage.setItem('xl_studio_mirrors', JSON.stringify(ids)); if (localStorage.getItem('xl_studio_last') === id) localStorage.removeItem('xl_studio_last'); } catch (er) {}
+          const inUse = new Set(); list.filter(y => y.id !== id).forEach(y => (y.keys || []).forEach(k => inUse.add(k)));
+          (x.keys || []).forEach(k => { if (!inUse.has(k)) idbDel(k); });
+          idbDel('exp:' + id);
+          if (PROJ && PROJ.id === id) resetStudio();
+          row.remove();
+          if (!host.querySelector('.pj-row')) host.innerHTML = '<div class="pj-empty">No saved reels yet. Add footage and it saves by itself.</div>';
+          toast('Reel deleted');
+        } catch (er) { toast(er.message || 'Not deleted', true); }
+      }, { okText: 'Delete', danger: true });
+    });
+  });
+}
+$('btn-projects').addEventListener('click', listProjects);
+$('btn-new').addEventListener('click', () => {
+  if (!hasWork()) { toast('This is a new reel - add footage to start'); return; }
+  autosaveTick(true);
+  resetStudio();
+  try { localStorage.removeItem('xl_studio_last'); } catch (e) {}
+  toast('New reel - the last one is saved in Projects');
+  $('scroller').scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+});
+$('proj-name').addEventListener('click', () => {
+  if ($('proj-bar').classList.contains('local') || $('proj-bar').classList.contains('err')) { unlock().then(ok => { if (ok) saveSoon(); }); return; }
+  if (!hasWork()) { toast('Add footage first - then name the reel'); return; }
+  K.confirm('Name this <span>reel</span>', '<input id="pj-name-in" class="xl-input" maxlength="60" autocomplete="off" value="' + esc(projName()) + '">', () => {
+    const v = ($('pj-name-in') || {}).value || '';
+    if (!PROJ) autosaveTick(true);
+    if (!PROJ) return;
+    PROJ.name = v.trim(); PROJ.named = !!v.trim();
+    setStatus('', 'Saving...'); saveSoon();
+  }, { okText: 'Save' });
+  setTimeout(() => { const el = $('pj-name-in'); if (el) { el.focus(); el.select(); } }, 80);
+});
+(function reopenLast() {
+  let id = ''; try { id = localStorage.getItem('xl_studio_last') || ''; } catch (e) {}
+  if (id) openProject(id, true);
+})();
+
 window.XLStudio = {
   build: XL_STUDIO_BUILD, S, plan: () => plan(), addFiles, addMusic, exportReel, setTpl, autoEdit, applyPlan, srcBoxToOut, planFromState,
-  get lastBlob() { return lastBlob; }, get T() { return T; }, get playing() { return playing; }, seekTo, drawFrame, pickVideoCodec, pickAudioCodec
+  get lastBlob() { return lastBlob; }, get T() { return T; }, get playing() { return playing; }, seekTo,
+  get proj() { return PROJ; }, setCut, projState, autosaveTick, openProject, resetStudio, idbKeys, drawFrame, pickVideoCodec, pickAudioCodec
 };
 })();
 </script>
