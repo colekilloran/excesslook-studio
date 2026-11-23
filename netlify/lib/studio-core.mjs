@@ -3,11 +3,12 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1d-2026-11-23-projects';
+export const CORE_BUILD = 'SC1e-2026-11-23-fullcontrol';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
 const MAX_REEL = 90;
+const MOTIONS = ['auto', 'none', 'slow', 'in', 'out', 'left', 'right', 'up', 'down'];
 
 /* ── auth ─────────────────────────────────────────────────────────────── */
 // One shared passcode in a Netlify env var. Compared in constant time so the
@@ -37,6 +38,21 @@ export const PLAN_TOOL = {
         description: 'ba = Before / After (first shot labeled BEFORE, last AFTER). walk = Walkaround (title card then service lower third). reveal = slow push-in, headline on the last shot.' },
       cut: { type: 'string', enum: ['hard', 'dip', 'flash'],
         description: 'How one shot changes to the next. hard = a straight cut (the house style, use it unless the owner asks otherwise). dip = a quick dip to black. flash = a quick white flash.' },
+      look: {
+        type: 'object',
+        description: 'Reel-wide render settings. Leave a field out to keep the template default.',
+        properties: {
+          headline: { type: 'string', enum: ['auto', 'start', 'card', 'end', 'none'], description: 'Where the headline + service appear. auto = template default (ba start, walk card, reveal end). start = over the first shot. card = a title over the first 2.6 seconds. end = over the last shot. none = not shown.' },
+          lower_third: { type: 'string', enum: ['auto', 'on', 'off'], description: 'The service name as a gold-edged bar low on screen after the opening. auto = on for walk only.' },
+          background: { type: 'string', enum: ['blur', 'black'], description: 'What fills the frame around fit (whole-frame) shots: a blurred, darkened copy of the shot, or plain black.' },
+          shade: { type: 'boolean', description: 'Dark gradient along the bottom so white text reads. Default true.' },
+          logo: { type: 'boolean', description: 'The gold Excess Look logo in the top corner. Default true.' },
+          end_card: { type: 'boolean', description: 'The branded end card (logo + end line) after the last shot. Default true.' },
+          end_seconds: { type: 'number', description: 'End card length, 1.5 to 5 seconds. Default 2.6.' },
+          end_line: { type: 'string', description: 'End card main line, max 40 characters. Default "Book at excesslook.com".' },
+          end_small: { type: 'string', description: 'End card small line, max 40 characters. Default "Newport Beach, CA".' }
+        }
+      },
       title: { type: 'string', description: 'Headline, max 40 characters. Usually the vehicle (e.g. "Porsche 911 GT3"). Empty if you cannot tell the vehicle from the footage - never guess a model year.' },
       service: { type: 'string', description: 'Service line, max 48 characters, e.g. "Paint Correction + Ceramic Coating".' },
       shots: {
@@ -50,6 +66,14 @@ export const PLAN_TOOL = {
             out: { type: 'number', description: 'End time in seconds within that footage.' },
             label: { type: 'string', description: 'Optional short label shown as a gold pill, max 18 characters, e.g. BEFORE, AFTER, 50/50. Empty for none.' },
             fit: { type: 'string', enum: ['fill', 'fit'], description: 'fill = crop to fill the 9:16 frame (default for vertical footage). fit = show the whole frame over a blurred copy (use for landscape footage when the edges matter).' },
+            speed: { type: 'number', description: 'Playback speed, 0.25 to 4. 1 = normal, 0.5 = slow motion, 2 = double speed. The shot lasts (out - in) / speed on screen. Sound is pitched with it.' },
+            motion: { type: 'string', enum: ['auto', 'none', 'slow', 'in', 'out', 'left', 'right', 'up', 'down'],
+              description: 'Camera move drawn over the shot. auto = the template default (ba none, walk slow, reveal in). none = locked off. slow = gentle drift-in. in = push-in. out = pull-out. left / right / up / down = slow pan.' },
+            zoom: { type: 'number', description: 'Reframe zoom, 1 to 3. 1 = the normal fill or fit; above 1 crops in tighter.' },
+            focus: { type: 'object', properties: { x: { type: 'number' }, y: { type: 'number' } },
+              description: 'Reframe point in the SOURCE frame, 0-1 (x 0 = left edge, y 0 = top). The crop keeps this point as close to the center as the frame allows. Use it to crop to one side of landscape footage in fill mode, or with zoom to punch in on a detail. Default 0.5, 0.5.' },
+            text: { type: 'string', description: 'On-screen text over this shot, max 70 characters, drawn bold white, wrapped to at most 3 lines. Use it for hooks, questions, step names and offers - one idea at a time. Empty for none.' },
+            text_pos: { type: 'string', enum: ['top', 'center', 'bottom'], description: 'Where the shot text sits, inside the safe area. Default center.' },
             blur: {
               type: 'array', maxItems: 4,
               description: 'Privacy boxes for license plates and customer faces visible in this shot, in the SOURCE frame: x, y, w, h as fractions 0-1 of the footage frame width and height. Pad each box generously - it stays fixed for the whole shot.',
@@ -70,7 +94,10 @@ export const PLAN_TOOL = {
 /* ── the editor's brief ──────────────────────────────────────────────── */
 export const EDITOR_BRIEF = [
   'You are the in-house video editor for Excess Look Auto Solutions, a high-end auto detailing and protection shop in Newport Beach, California (paint correction, ceramic coating, PPF, tint, wraps, interiors).',
-  'You receive raw footage from a job as sampled stills (each labeled with its footage number and time) and you cut a vertical 9:16 reel for Instagram Reels and TikTok. A renderer turns your edit into the video: it adds the gold Excess Look logo, your labels and text, the music and the branded end card - you only choose the shots, timing, template and words.',
+  'You receive raw footage from a job as sampled stills (each labeled with its footage number and time) and you cut a vertical 9:16 reel for Instagram Reels and TikTok. The studio renders exactly what your edit says, and your edit controls everything it can draw:',
+  '- per shot: which footage, in / out, speed (slow motion or sped up), motion (none, slow drift, push-in, pull-out, pans), reframe (zoom + focus point - crop to any side or punch in), fill or fit, on-screen text (top / center / bottom), a gold label pill, privacy blur boxes;',
+  '- for the reel: template, cut between shots (hard / dip / flash), where the headline goes or none, the lower third on or off, blurred or black background behind fit shots, the bottom shade, the logo, the end card (on / off, length, both lines), headline, service, caption and hashtags.',
+  'So never tell the owner the renderer adds something you cannot change - set it. Only music and sound levels are chosen by the owner in the studio. If the owner asks for something no field above can do, say exactly which thing is missing.',
   '',
   'How a strong detailing reel is cut:',
   '- The first 1.5 seconds decide everything. Open on the single most striking moment: the finished reveal, a 50/50 paint-correction line, foam, water beading, a mirror reflection, a dramatic before. Never open on a wide static shot of a parking lot or a person standing.',
@@ -142,7 +169,7 @@ export function buildRequest({ footage, style, prev, want, model }) {
     task += 'Edits the owner approved before (match this taste):\n' + examples.map(e => '- ' + clean(e.summary, 400)).join('\n') + '\n\n';
   }
   if (prev && prev.plan) {
-    task += 'Your previous draft of THIS reel:\n' + JSON.stringify(slimPlan(prev.plan)).slice(0, 6000) + '\n';
+    task += 'Your previous draft of THIS reel:\n' + JSON.stringify(slimPlan(prev.plan)).slice(0, 12000) + '\n';
     task += 'The owner\'s notes on it (apply every one):\n' + clean(prev.notes, 2000) + '\n\n';
   }
   if (want) {
@@ -183,14 +210,17 @@ export function validatePlan(raw, footage) {
     const f = F.find(x => x.n === n);
     if (!f) return;
     let a, b;
+    const speed = f.kind === 'image' ? 1 : cl(num(s.speed, 1), 0.25, 4);
     if (f.kind === 'image') { a = 0; b = cl(num(s.out, 3) - num(s.in, 0), 1, 6); }
     else {
       a = cl(num(s.in, 0), 0, Math.max(0, f.dur - 0.4));
       b = cl(num(s.out, a + 2), a + 0.4, f.dur || a + 0.4);
       if (b - a < 0.4) return;
     }
-    if (total + (b - a) > MAX_REEL - 3) return;
-    total += b - a;
+    const onScreen = (b - a) / speed;
+    if (total + onScreen > MAX_REEL - 3) return;
+    total += onScreen;
+    const fo = s.focus && typeof s.focus === 'object' ? s.focus : {};
     const blur = (Array.isArray(s.blur) ? s.blur : []).slice(0, 4).map(r => {
       const x = cl(num(r.x, 0), 0, 0.98), y = cl(num(r.y, 0), 0, 0.98);
       return { x, y, w: cl(num(r.w, 0.1), 0.02, 1 - x), h: cl(num(r.h, 0.05), 0.02, 1 - y), what: clean(r.what, 30) };
@@ -199,14 +229,31 @@ export function validatePlan(raw, footage) {
       footage: n, in: +a.toFixed(2), out: +b.toFixed(2),
       label: clean(s.label, 18).toUpperCase(),
       fit: s.fit === 'fit' ? 'fit' : (s.fit === 'fill' ? 'fill' : (f.w > f.h * 1.05 ? 'fit' : 'fill')),
+      speed: +speed.toFixed(2),
+      motion: MOTIONS.includes(s.motion) ? s.motion : 'auto',
+      zoom: +cl(num(s.zoom, 1), 1, 3).toFixed(2),
+      focus: { x: +cl(num(fo.x, 0.5), 0, 1).toFixed(3), y: +cl(num(fo.y, 0.5), 0, 1).toFixed(3) },
+      text: clean(s.text, 70),
+      text_pos: ['top', 'center', 'bottom'].includes(s.text_pos) ? s.text_pos : 'center',
       blur
     });
   });
   if (!shots.length) throw new Error('The editor picked no usable shots');
   const tags = (Array.isArray(raw.hashtags) ? raw.hashtags : [])
     .map(t => String(t || '').replace(/^#+/, '').replace(/[^A-Za-z0-9_]/g, '')).filter(Boolean).slice(0, 15);
+  const lk = raw.look && typeof raw.look === 'object' ? raw.look : {};
+  const look = {};
+  if (['auto', 'start', 'card', 'end', 'none'].includes(lk.headline)) look.headline = lk.headline;
+  if (['auto', 'on', 'off'].includes(lk.lower_third)) look.lower = lk.lower_third;
+  if (['blur', 'black'].includes(lk.background)) look.bg = lk.background;
+  ['shade', 'logo'].forEach(k => { if (typeof lk[k] === 'boolean') look[k] = lk[k]; });
+  if (typeof lk.end_card === 'boolean') look.end = lk.end_card;
+  if (lk.end_seconds != null && isFinite(parseFloat(lk.end_seconds))) look.endLen = +cl(num(lk.end_seconds, 2.6), 1.5, 5).toFixed(1);
+  if (typeof lk.end_line === 'string') look.cta = clean(lk.end_line, 40);
+  if (typeof lk.end_small === 'string') look.tag = clean(lk.end_small, 40);
   return {
     template: tpl,
+    look,
     cut: ['hard', 'dip', 'flash'].includes(raw.cut) ? raw.cut : 'hard',
     title: clean(raw.title, 40),
     service: clean(raw.service, 48),
@@ -218,8 +265,18 @@ export function validatePlan(raw, footage) {
   };
 }
 export function slimPlan(p) {
-  return p ? { template: p.template, title: p.title, service: p.service,
-    shots: (p.shots || []).map(s => ({ footage: s.footage, in: s.in, out: s.out, label: s.label || undefined })),
+  // the redo sees the reel as it stands now, including every hand tweak
+  return p ? { template: p.template, cut: p.cut, look: p.look, title: p.title, service: p.service,
+    shots: (p.shots || []).map(s => {
+      const o = { footage: s.footage, in: s.in, out: s.out };
+      if (s.label) o.label = s.label;
+      ['fit', 'motion', 'text', 'text_pos'].forEach(k => { if (s[k]) o[k] = s[k]; });
+      if (s.speed && s.speed !== 1) o.speed = s.speed;
+      if (s.zoom && s.zoom !== 1) o.zoom = s.zoom;
+      if (s.focus && (s.focus.x !== 0.5 || s.focus.y !== 0.5)) o.focus = s.focus;
+      if (s.blur && s.blur.length) o.blur = s.blur;
+      return o;
+    }),
     caption: p.caption } : null;
 }
 export function summarize(p) {

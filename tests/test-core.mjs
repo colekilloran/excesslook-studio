@@ -152,7 +152,7 @@ const f3 = await store.get('job/f3', { type: 'json' });
 check(36, f3.status === 'error' && /did not return an edit/.test(f3.error), 'two replies with no edit -> the job says so');
 
 // 37-44 SC1d - saved projects: the edit is saved online, never the footage
-check(37, C.CORE_BUILD === 'SC1d-2026-11-23-projects', 'core ' + C.CORE_BUILD);
+check(37, /^SC1[d-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const ps = fakeStore();
 const proj = { id: 'p1abc', name: 'G-Wagon ceramic', v: 1, len: 14.2, thumb: 'data:image/jpeg;base64,' + 'A'.repeat(200),
   footage: [{ key: 'IMG_0594.mov|52000000|1700000000000', name: 'IMG_0594.mov', size: 52000000, kind: 'video', dur: 28.4 }],
@@ -191,6 +191,23 @@ const pc2 = C.validatePlan({ template: 'walk', cut: 'wipe', shots: [{ footage: 1
 check(45, pc0.cut === 'hard' && pc1.cut === 'dip' && pc2.cut === 'hard', 'cut: hard unless dip or flash');
 const rq = C.buildRequest({ footage, style: { rules: [], examples: [] } });
 check(46, rq.tools[0].input_schema.properties.cut.enum.join() === 'hard,dip,flash' && /hard cuts/.test(rq.system) && /never say the studio adds transitions/.test(rq.system), 'the editor knows it sets the cut');
+
+// 47-52 SC1e full control - every renderer knob is a field the editor can set, checked not trusted
+check(47, C.CORE_BUILD === 'SC1e-2026-11-23-fullcontrol', 'core ' + C.CORE_BUILD);
+const sp = C.PLAN_TOOL.input_schema.properties, shp = sp.shots.items.properties;
+check(48, ['speed', 'motion', 'zoom', 'focus', 'text', 'text_pos', 'fit', 'blur', 'label'].every(k => shp[k]) && ['headline', 'lower_third', 'background', 'shade', 'logo', 'end_card', 'end_seconds', 'end_line', 'end_small'].every(k => sp.look.properties[k]) && sp.cut,
+  'the edit tool has every per-shot and reel-wide knob');
+const fp = C.validatePlan({ template: 'walk', look: { headline: 'none', lower_third: 'off', background: 'black', shade: false, logo: false, end_card: true, end_seconds: 9, end_line: 'Book now', end_small: 'x'.repeat(80), bogus: 1 },
+  shots: [{ footage: 1, in: 0, out: 4, speed: 2, motion: 'left', zoom: 2.2, focus: { x: 0.1, y: 0.9 }, text: 'IS PPF WORTH IT?', text_pos: 'top' },
+          { footage: 1, in: 0, out: 2, speed: 9, motion: 'spin', zoom: 7, focus: { x: -3 }, text_pos: 'side' }] }, footage);
+const f0 = fp.shots[0], f1 = fp.shots[1];
+check(49, f0.speed === 2 && f0.motion === 'left' && f0.zoom === 2.2 && f0.focus.x === 0.1 && f0.focus.y === 0.9 && f0.text === 'IS PPF WORTH IT?' && f0.text_pos === 'top', 'shot knobs pass through ' + JSON.stringify(f0).slice(0, 160));
+check(50, f1.speed === 4 && f1.motion === 'auto' && f1.zoom === 3 && f1.focus.x === 0 && f1.focus.y === 0.5 && f1.text_pos === 'center', 'out-of-range knobs clamped or defaulted ' + JSON.stringify(f1).slice(0, 160));
+check(51, fp.look.headline === 'none' && fp.look.lower === 'off' && fp.look.bg === 'black' && fp.look.shade === false && fp.look.logo === false && fp.look.end === true && fp.look.endLen === 5 && fp.look.cta === 'Book now' && fp.look.tag.length === 40 && !('bogus' in fp.look) && Math.abs(fp.length - 2.5) < 0.01,
+  'look checked; the on-screen length counts speed (' + fp.length + 's)');
+const slim = C.slimPlan(fp), rq2 = C.buildRequest({ footage, style: { rules: [], examples: [] } });
+check(52, slim.look && slim.shots[0].speed === 2 && slim.shots[0].text && slim.shots[0].focus && /never tell the owner the renderer adds something you cannot change/.test(rq2.system) && /speed \(slow motion or sped up\)/.test(rq2.system),
+  'a redo sees every knob; the brief tells the editor it controls them');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);

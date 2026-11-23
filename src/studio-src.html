@@ -10,7 +10,7 @@
 /*@KITCSS*/
 </style>
 <style>
-/* ══ REEL STUDIO - ST1e ══════════════════════════════════════════════════════
+/* ══ REEL STUDIO - ST1f ══════════════════════════════════════════════════════
    Raw footage in, finished reel out. An AI editor plans the cut from stills,
    this page renders it. Everything runs on the device: clips are read from
    the files you pick, the reel is drawn on a canvas and encoded by the
@@ -97,6 +97,18 @@ input[type=range].xr::-moz-range-thumb{width:20px;height:20px;border-radius:10px
   font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);background:var(--bg3);border:1px solid var(--hair)}
 .chipbtn svg{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .chipbtn.on{color:var(--gold);background:var(--gold-soft);border-color:rgba(200,169,81,.45)}
+.chipbtn.tw:not(.on){border-color:rgba(200,169,81,.45)}
+.more{margin-top:10px;padding-top:10px;border-top:1px solid var(--hair)}
+.more-h{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:10px 0 6px}
+.more-h:first-child{margin-top:0}
+.more-chips{display:flex;flex-wrap:wrap;gap:6px}
+.more-chips .chipbtn{padding:7px 10px}
+.more-reset{background:none;border:0;color:var(--gold);font-family:var(--ff);font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:2px 0}
+.more .trim{margin-top:2px}
+.look-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.look-grid .xl-f{margin-bottom:0}
+.look-grid .xl-seg button{font-size:12.5px;padding:9px 2px}
+@media(max-width:520px){.look-grid{grid-template-columns:minmax(0,1fr)}}
 .add-clips{width:100%;justify-content:center}
 .drop{border-radius:14px;transition:background .2s var(--ease),box-shadow .2s var(--ease)}
 .drop.over{background:var(--gold-soft);box-shadow:0 0 0 2px rgba(200,169,81,.5)}
@@ -363,6 +375,17 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
         <button data-cut="flash" type="button">Flash</button>
       </div>
 
+      <div class="xl-h2">LOOK <span class="ln"></span></div>
+      <div class="look-grid" id="look">
+        <div class="xl-f"><label>Headline</label><div class="xl-seg" data-look="headline"><button data-v="auto" type="button">Auto</button><button data-v="start" type="button">Open</button><button data-v="card" type="button">Card</button><button data-v="end" type="button">End</button><button data-v="none" type="button">Off</button></div></div>
+        <div class="xl-f"><label>Service bar</label><div class="xl-seg" data-look="lower"><button data-v="auto" type="button">Auto</button><button data-v="on" type="button">On</button><button data-v="off" type="button">Off</button></div></div>
+        <div class="xl-f"><label>Behind whole shots</label><div class="xl-seg" data-look="bg"><button data-v="blur" type="button">Blur</button><button data-v="black" type="button">Black</button></div></div>
+        <div class="xl-f"><label>Bottom shade</label><div class="xl-seg" data-look="shade"><button data-v="true" type="button">On</button><button data-v="false" type="button">Off</button></div></div>
+        <div class="xl-f"><label>Logo</label><div class="xl-seg" data-look="logo"><button data-v="true" type="button">On</button><button data-v="false" type="button">Off</button></div></div>
+        <div class="xl-f"><label>End card</label><div class="xl-seg" data-look="end"><button data-v="true" type="button">On</button><button data-v="false" type="button">Off</button></div></div>
+      </div>
+      <div class="trim" id="end-len-row"><span>End card length</span><input type="range" class="xr" id="end-len" min="1.5" max="5" step="0.1" value="2.6"><em id="end-len-v">2.6s</em></div>
+
       <div class="xl-h2">TEXT <span class="ln"></span></div>
       <div class="xl-row">
         <div class="xl-f"><label for="f-title">Headline</label><input id="f-title" maxlength="40" placeholder="e.g. 2024 G-Wagon"></div>
@@ -431,7 +454,7 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1e-2026-11-23-projects';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1f-2026-11-23-fullcontrol';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -456,8 +479,18 @@ const S = {
   tpl: 'ba', cut: 'hard', title: '', service: '', cta: 'Book at excesslook.com', tag: 'Newport Beach, CA',
   clips: [], music: null, sel: null, safe: false,
   sources: [], plan: null, sampled: null, usage: null,
-  missing: [], waiting: [], musicMissing: null        // ST1e: a saved reel's clips that are not on this device yet
+  missing: [], waiting: [], musicMissing: null,       // ST1e: a saved reel's clips that are not on this device yet
+  look: null                                          // ST1f: reel-wide render settings (lookDefaults)
 };
+/* ST1f - full control. Cole: "This editor needs full access to do everything that the renderer [does]. I'm
+   tired of it not being able to make an edit for me that it clearly needs to be able to make." Every knob the
+   renderer has is now a field the editor's plan can set AND a control in the studio: per shot speed, motion,
+   reframe (zoom + focus), on-screen text; for the reel headline placement, lower third, background behind fit
+   shots, bottom shade, logo, end card (on, length, lines). Defaults reproduce the old picture exactly. */
+const lookDefaults = () => ({ headline: 'auto', lower: 'auto', bg: 'blur', shade: true, logo: true, end: true, endLen: 2.6 });
+S.look = lookDefaults();
+const SHOT_DEF = { speed: 1, motion: 'auto', zoom: 1, fx: 0.5, fy: 0.5, text: '', textPos: 'center' };
+const MOTION_LABEL = { auto: 'Auto', none: 'None', slow: 'Drift', in: 'Push In', out: 'Pull Out', left: 'Pan Left', right: 'Pan Right', up: 'Pan Up', down: 'Pan Down' };
 let uid = 0;
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
@@ -507,13 +540,16 @@ function plan() {
   const segs = []; let t = 0;
   const live = S.clips.filter(c => c.ready);
   live.forEach((c, i) => {
-    const d = Math.max(0.3, c.outT - c.inT);
+    const d = Math.max(0.3, (c.outT - c.inT) / spd(c));
     segs.push({ kind: 'clip', clip: c, i, n: live.length, start: t, dur: d });
     t += d;
   });
-  if (live.length) { segs.push({ kind: 'outro', start: t, dur: OUTRO }); t += OUTRO; }
-  return { segs, total: t, clipsEnd: t - (live.length ? OUTRO : 0) };
+  const endLen = S.look.end ? clamp(Number(S.look.endLen) || OUTRO, 1.5, 5) : 0;
+  if (live.length && endLen) { segs.push({ kind: 'outro', start: t, dur: endLen }); t += endLen; }
+  return { segs, total: t, clipsEnd: t - (live.length ? endLen : 0) };
 }
+const spd = c => (c && c.kind === 'video' ? clamp(Number(c.speed) || 1, 0.25, 4) : 1);
+const srcTime = (c, seg, t) => clamp(c.inT + (t - seg.start) * spd(c), 0, c.srcDur - 0.02);
 function segAt(P, t) {
   for (const s of P.segs) if (t < s.start + s.dur) return s;
   return P.segs[P.segs.length - 1] || null;
@@ -535,24 +571,73 @@ function mediaSize(c) {
   const m = c.el;
   return c.kind === 'video' ? [m.videoWidth, m.videoHeight] : [m.naturalWidth, m.naturalHeight];
 }
-function drawMedia(ctx, c, zoom) {
+/* where the source lands in the 9:16 frame: fill or fit, times the shot's reframe zoom and the motion's zoom,
+   kept as close to the focus point as the frame allows, then nudged by a pan. Blur boxes use the same math. */
+function mediaRect(c, mz, dx, dy, fit) {
   const [mw, mh] = mediaSize(c);
-  if (!mw || !mh) return;
-  if (c.fit === 'fit') {
-    // A landscape clip shown whole, over a blurred, darkened copy of itself.
+  if (!mw || !mh) return null;
+  const f = fit || c.fit;
+  const base = f === 'fit' ? Math.min(OUT_W / mw, OUT_H / mh) : Math.max(OUT_W / mw, OUT_H / mh);
+  const sc = base * clamp(Number(c.zoom) || 1, 1, 3) * (mz || 1);
+  const W = mw * sc, H = mh * sc;
+  const place = (out, size, focus, pan) => {
+    if (size <= out + 0.5) return (out - size) / 2 + pan * out;
+    return clamp(out / 2 - focus * size + pan * out, out - size, 0);
+  };
+  const fx = Number.isFinite(c.fx) ? c.fx : 0.5, fy = Number.isFinite(c.fy) ? c.fy : 0.5;
+  return { x: place(OUT_W, W, fx, dx || 0), y: place(OUT_H, H, fy, dy || 0), W, H, mw, mh };
+}
+function motionOf(c, u) {
+  const m = c.motion && c.motion !== 'auto' ? c.motion : (S.tpl === 'reveal' ? 'in' : S.tpl === 'walk' ? 'slow' : 'none');
+  switch (m) {
+    case 'slow': return { z: 1.03 + 0.04 * u, dx: 0, dy: 0 };
+    case 'in': return { z: 1 + 0.12 * u, dx: 0, dy: 0 };
+    case 'out': return { z: 1.12 - 0.12 * u, dx: 0, dy: 0 };
+    case 'left': return { z: 1.1, dx: 0.035 - 0.07 * u, dy: 0 };
+    case 'right': return { z: 1.1, dx: -0.035 + 0.07 * u, dy: 0 };
+    case 'up': return { z: 1.1, dx: 0, dy: 0.03 - 0.06 * u };
+    case 'down': return { z: 1.1, dx: 0, dy: -0.03 + 0.06 * u };
+    default: return { z: 1, dx: 0, dy: 0 };
+  }
+}
+function drawMedia(ctx, c, mv) {
+  const r = mediaRect(c, mv.z, mv.dx, mv.dy);
+  if (!r) return;
+  if (c.fit === 'fit' && S.look.bg !== 'black') {
+    // shown whole, over a blurred, darkened copy of itself
     const b = bgSmall.getContext('2d');
-    const bs = Math.max(27 / mw, 48 / mh);
-    b.drawImage(c.el, (27 - mw * bs) / 2, (48 - mh * bs) / 2, mw * bs, mh * bs);
+    const bs = Math.max(27 / r.mw, 48 / r.mh);
+    b.drawImage(c.el, (27 - r.mw * bs) / 2, (48 - r.mh * bs) / 2, r.mw * bs, r.mh * bs);
     ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(bgSmall, -40, -70, OUT_W + 80, OUT_H + 140);
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, OUT_W, OUT_H);
     ctx.restore();
-    const s = Math.min(OUT_W / mw, OUT_H / mh) * zoom;
-    ctx.drawImage(c.el, (OUT_W - mw * s) / 2, (OUT_H - mh * s) / 2, mw * s, mh * s);
-  } else {
-    const s = Math.max(OUT_W / mw, OUT_H / mh) * zoom;
-    ctx.drawImage(c.el, (OUT_W - mw * s) / 2, (OUT_H - mh * s) / 2, mw * s, mh * s);
   }
+  ctx.drawImage(c.el, r.x, r.y, r.W, r.H);
+}
+/* on-screen text for a shot: bold white, wrapped to 3 lines, inside the safe area */
+function shotText(ctx, text, pos, a) {
+  if (!text || a <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let size = 84; const maxW = 880;
+  const wrap = sz => {
+    setFont(ctx, sz, FF, '800'); track(ctx, 0);
+    const words = String(text).split(/\s+/), lines = [];
+    let cur = '';
+    words.forEach(w => { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; } });
+    if (cur) lines.push(cur);
+    return lines;
+  };
+  let lines = wrap(size);
+  while ((lines.length > 3 || lines.some(l => ctx.measureText(l).width > maxW)) && size > 40) { size -= 4; lines = wrap(size); }
+  const lh = size * 1.14, block = lh * lines.length;
+  const cy = pos === 'top' ? 330 + block / 2 : pos === 'bottom' ? 1430 - block / 2 : 900;
+  ctx.shadowColor = 'rgba(0,0,0,.75)'; ctx.shadowBlur = 28; ctx.shadowOffsetY = 4;
+  ctx.fillStyle = '#FFFFFF';
+  lines.forEach((l, i) => ctx.fillText(l, OUT_W / 2, cy - block / 2 + lh * (i + 0.5)));
+  ctx.restore();
 }
 function pixelate(ctx, b) {
   // Privacy box: the area is redrawn from a tiny copy, so plates and faces
@@ -651,29 +736,34 @@ function drawFrame(ctx, t, P, opts) {
   const local = t - seg.start;
   if (seg.kind === 'outro') { drawOutro(ctx, local); ctx.restore(); return; }
   const c = seg.clip, u = local / seg.dur;
-  const zoom = S.tpl === 'reveal' ? 1 + 0.12 * u : S.tpl === 'walk' ? 1.03 + 0.04 * u : 1;
-  drawMedia(ctx, c, zoom);
+  drawMedia(ctx, c, motionOf(c, u));
   (c.blurs || []).forEach(b => pixelate(ctx, b));
   // soft vignette at the bottom so white text always reads
-  const vg = ctx.createLinearGradient(0, OUT_H * .55, 0, OUT_H);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
-  ctx.fillStyle = vg; ctx.fillRect(0, OUT_H * .55, OUT_W, OUT_H * .45);
-  watermark(ctx);
+  if (S.look.shade) {
+    const vg = ctx.createLinearGradient(0, OUT_H * .55, 0, OUT_H);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
+    ctx.fillStyle = vg; ctx.fillRect(0, OUT_H * .55, OUT_W, OUT_H * .45);
+  }
+  if (S.look.logo) watermark(ctx);
 
   const lab = labelFor(seg);
   const inA = ease(local / 0.35), outA = 1 - ease((local - (seg.dur - 0.2)) / 0.2);
   if (lab) pill(ctx, lab, 64, 260, Math.min(inA, outA), inA);
+  if (c.text) shotText(ctx, c.text, c.textPos, Math.min(ease(local / 0.15), seg.dur > 0.6 ? 1 - ease((local - (seg.dur - 0.12)) / 0.12) : 1));
 
-  if (S.tpl === 'ba' && seg.i === 0) {
+  const hl = S.look.headline === 'auto' || !S.look.headline ? (S.tpl === 'ba' ? 'start' : S.tpl === 'walk' ? 'card' : 'end') : S.look.headline;
+  const lower = S.look.lower === 'on' || ((S.look.lower === 'auto' || !S.look.lower) && S.tpl === 'walk');
+  if (hl === 'start' && seg.i === 0) {
     const a = Math.min(ease(local / 0.5), outA);
     headline(ctx, S.title, S.service, OUT_W / 2, 1290, a, ease(local / 0.6));
   }
-  if (S.tpl === 'walk') {
-    const intro = 2.6;
-    if (t < intro) {
-      const a = Math.min(ease(t / 0.5), 1 - ease((t - (intro - 0.35)) / 0.35));
-      headline(ctx, S.title, S.service, OUT_W / 2, 900, a, ease(t / 0.7));
-    } else if (S.service) {
+  const intro = hl === 'card' ? 2.6 : hl === 'start' ? (P.segs[0] ? P.segs[0].dur : 0) : 0;
+  if (hl === 'card' && t < intro) {
+    const a = Math.min(ease(t / 0.5), 1 - ease((t - (intro - 0.35)) / 0.35));
+    headline(ctx, S.title, S.service, OUT_W / 2, 900, a, ease(t / 0.7));
+  }
+  if (lower && t >= intro && !(hl === 'end' && seg.i === seg.n - 1)) {
+    if (S.service) {
       const a = ease((t - intro) / 0.4) * (1 - ease((t - (P.clipsEnd - 0.25)) / 0.25));
       ctx.save(); ctx.globalAlpha = a;
       track(ctx, 1); const fs = fit(ctx, S.service, 44, FF, '700', 760, 24);
@@ -684,7 +774,7 @@ function drawFrame(ctx, t, P, opts) {
       ctx.restore();
     }
   }
-  if (S.tpl === 'reveal' && seg.i === seg.n - 1) {
+  if (hl === 'end' && seg.i === seg.n - 1) {
     const st = seg.dur * 0.35;
     const a = ease((local - st) / 0.6) * outA;
     headline(ctx, S.title, S.service, OUT_W / 2, 1250, a, ease((local - st) / 0.8));
@@ -717,12 +807,13 @@ function syncMedia(t) {
     const active = seg && seg.kind === 'clip' && seg.clip === c;
     const v = c.el;
     if (!active) return;
-    const want = clamp(c.inT + (t - seg.start), 0, c.srcDur - 0.02);
+    const want = srcTime(c, seg, t);
     v.muted = !c.audio;
     v.volume = 1;
+    try { if (v.playbackRate !== spd(c)) v.playbackRate = spd(c); } catch (e) {}
     if (playing) {
       if (v.paused) { v.currentTime = want; v.play().catch(() => {}); }
-      else if (Math.abs(v.currentTime - want) > 0.3) v.currentTime = want;
+      else if (Math.abs(v.currentTime - want) > 0.3 * spd(c)) v.currentTime = want;
     } else {
       if (!v.paused) v.pause();
       if (!v.seeking && Math.abs(v.currentTime - want) > 0.03) v.currentTime = want;
@@ -879,7 +970,7 @@ async function addFiles(list) {
 }
 /* A shot is one piece of a source. Several shots can share one source. */
 function shotFrom(src, o) {
-  const sh = Object.assign({}, src, {
+  const sh = Object.assign({}, src, SHOT_DEF, {
     id: ++uid, src, blurs: [], label: '', inT: src.inT, outT: src.outT, fit: src.fit, audio: src.kind === 'video'
   }, o || {});
   sh.blurs = (o && o.blurs ? o.blurs : []).map(b => Object.assign({}, b));
@@ -923,6 +1014,7 @@ function thumb(c) {
   });
 }
 const IC = {
+  more: '<svg width="13" height="13" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="17" r="2.2"/></svg>',
   up: '<svg width="14" height="14" viewBox="0 0 24 24"><polyline points="6,15 12,9 18,15"/></svg>',
   down: '<svg width="14" height="14" viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>',
   x: '<svg width="14" height="14" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
@@ -943,7 +1035,7 @@ function renderClips() {
       '<div class="clip-top">'
       + '<img class="clip-th" width="36" height="64" alt="" src="' + (c.thumb || '') + '">'
       + '<div class="xl-row-txt"><span class="t"><span class="clip-num">' + (i + 1) + '</span> &nbsp;' + esc(labelFor({ clip: c, i, n: S.clips.length }) || (c.kind === 'image' ? 'Photo' : 'Video')) + '</span>'
-      + '<span class="s">F' + (c.src && c.src.fid || '?') + ' ' + esc(c.name) + ' - uses <b class="uses">' + (c.outT - c.inT).toFixed(1) + 's</b>' + (c.kind === 'video' ? ' of ' + c.srcDur.toFixed(1) + 's' : '') + '</span></div>'
+      + '<span class="s">F' + (c.src && c.src.fid || '?') + ' ' + esc(c.name) + ' - uses <b class="uses">' + ((c.outT - c.inT) / spd(c)).toFixed(1) + 's</b>' + (c.kind === 'video' ? ' of ' + c.srcDur.toFixed(1) + 's' : '') + '</span></div>'
       + '<div class="clip-btns">'
       + '<button class="ibtn press" data-a="up" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>' + IC.up + '</button>'
       + '<button class="ibtn press" data-a="down" aria-label="Move down"' + (i === S.clips.length - 1 ? ' disabled' : '') + '>' + IC.down + '</button>'
@@ -961,11 +1053,42 @@ function renderClips() {
       + (c.kind === 'video' ? '<button class="chipbtn press' + (c.audio ? ' on' : '') + '" data-a="audio">' + (c.audio ? IC.sound + 'Sound' : IC.mute + 'Muted') + '</button>' : '')
       + '<button class="chipbtn press' + (c.fit === 'fit' ? ' on' : '') + '" data-a="fit">' + IC.fit + (c.fit === 'fit' ? 'Whole' : 'Fill') + '</button>'
       + '<button class="chipbtn press' + (c.blurs.length ? ' on' : '') + '" data-a="blur">' + IC.blur + 'Blur' + (c.blurs.length ? ' ' + c.blurs.length : '') + '</button>'
-      + '</div>';
+      + '<button class="chipbtn press' + (c._more ? ' on' : '') + (shotTweaked(c) ? ' tw' : '') + '" data-a="more" aria-expanded="' + (c._more ? 'true' : 'false') + '">' + IC.more + 'More</button>'
+      + '</div>'
+      + (c._more ? moreHtml(c) : '');
     host.appendChild(el);
   });
   host.querySelectorAll('input[type=range]').forEach(rangeFill);
   K.pressAll(host);
+}
+/* ST1f per-shot controls: text, speed, motion, reframe */
+function shotTweaked(c) { return !!(c.text || spd(c) !== 1 || (c.motion && c.motion !== 'auto') || (c.zoom || 1) !== 1 || (c.fx != null && c.fx !== 0.5) || (c.fy != null && c.fy !== 0.5)); }
+function chips(a, list, cur) {
+  return '<div class="more-chips">' + list.map(([v, t]) => '<button class="chipbtn press' + (String(cur) === String(v) ? ' on' : '') + '" data-a="' + a + '" data-v="' + v + '" type="button">' + t + '</button>').join('') + '</div>';
+}
+function moreHtml(c) {
+  const sp = spd(c), sps = [[0.5, '0.5x'], [0.75, '0.75x'], [1, '1x'], [1.5, '1.5x'], [2, '2x']];
+  if (!sps.some(x => x[0] === sp)) sps.push([sp, sp + 'x']);
+  return '<div class="more">'
+    + '<div class="more-h">On-screen text</div>'
+    + '<div class="xl-f" style="margin-bottom:8px"><input data-a="text" maxlength="70" placeholder="e.g. IS PPF WORTH IT?" value="' + esc(c.text || '') + '" aria-label="On-screen text"></div>'
+    + chips('tpos', [['top', 'Top'], ['center', 'Center'], ['bottom', 'Bottom']], c.textPos || 'center')
+    + (c.kind === 'video' ? '<div class="more-h">Speed</div>' + chips('speed', sps, sp) : '')
+    + '<div class="more-h">Motion</div>' + chips('motion', Object.keys(MOTION_LABEL).map(k => [k, MOTION_LABEL[k]]), c.motion || 'auto')
+    + '<div class="more-h">Reframe <button class="more-reset press" data-a="reframe0" type="button">Reset</button></div>'
+    + '<div class="trim">'
+    + '<span>Zoom</span><input type="range" class="xr" data-a="zoom" min="1" max="3" step="0.05" value="' + (c.zoom || 1) + '"><em class="v-zoom">' + (c.zoom || 1).toFixed(2) + 'x</em>'
+    + '<span>Left-Right</span><input type="range" class="xr" data-a="fx" min="0" max="1" step="0.01" value="' + (c.fx != null ? c.fx : 0.5) + '"><em class="v-fx">' + Math.round((c.fx != null ? c.fx : 0.5) * 100) + '</em>'
+    + '<span>Up-Down</span><input type="range" class="xr" data-a="fy" min="0" max="1" step="0.01" value="' + (c.fy != null ? c.fy : 0.5) + '"><em class="v-fy">' + Math.round((c.fy != null ? c.fy : 0.5) * 100) + '</em>'
+    + '</div></div>';
+}
+function shotChanged(c, keepOpen) {
+  setPlaying(false);
+  S.sel = c.id;
+  replan(true);
+  const s = segOf(c);
+  if (s) { seekTo(Math.min(s.start + Math.min(0.5, s.dur / 2), s.start + s.dur - 0.05)); edited(s.start + 0.001); }
+  dirty(600);
 }
 function clipById(id) { return S.clips.find(c => c.id === Number(id)); }
 function segOf(c) { return P.segs.find(s => s.kind === 'clip' && s.clip === c); }
@@ -978,7 +1101,7 @@ function selectClip(id, jump) {
 }
 function updateClipRow(c) {
   const el = document.querySelector('.clip[data-id="' + c.id + '"]'); if (!el) return;
-  const u = el.querySelector('.uses'); if (u) u.textContent = (c.outT - c.inT).toFixed(1) + 's';
+  const u = el.querySelector('.uses'); if (u) u.textContent = ((c.outT - c.inT) / spd(c)).toFixed(1) + 's';
   const vi = el.querySelector('.v-in'); if (vi) vi.textContent = c.inT.toFixed(1) + 's';
   const vo = el.querySelector('.v-out'); if (vo) vo.textContent = c.outT.toFixed(1) + 's';
   const vl = el.querySelector('.v-len'); if (vl) vl.textContent = (c.outT - c.inT).toFixed(1) + 's';
@@ -1009,7 +1132,12 @@ $('clips').addEventListener('click', e => {
   if (a === 'down') return moveClip(c, 1);
   if (a === 'rm') return removeClip(c);
   if (a === 'audio') { c.audio = !c.audio; renderClips(); return; }
-  if (a === 'fit') { c.fit = c.fit === 'fit' ? 'fill' : 'fit'; renderClips(); dirty(); return; }
+  if (a === 'fit') { c.fit = c.fit === 'fit' ? 'fill' : 'fit'; renderClips(); shotChanged(c); return; }
+  if (a === 'more') { c._more = !c._more; renderClips(); return; }
+  if (a === 'tpos') { c.textPos = b.dataset.v; renderClips(); shotChanged(c); return; }
+  if (a === 'speed') { c.speed = clamp(parseFloat(b.dataset.v) || 1, 0.25, 4); renderClips(); shotChanged(c); return; }
+  if (a === 'motion') { c.motion = MOTION_LABEL[b.dataset.v] ? b.dataset.v : 'auto'; renderClips(); shotChanged(c); return; }
+  if (a === 'reframe0') { c.zoom = 1; c.fx = 0.5; c.fy = 0.5; renderClips(); shotChanged(c); return; }
   if (a === 'blur') {
     selectClip(c.id, true);
     c.blurs.push({ x: 0.3, y: 0.62, w: 0.4, h: 0.07 });
@@ -1024,6 +1152,17 @@ $('clips').addEventListener('input', e => {
   const c = clipById(card.dataset.id); if (!c) return;
   const a = e.target.dataset.a;
   if (a === 'label') { c.label = e.target.value; dirty(); { const s0 = segOf(c); edited(s0 ? s0.start + 0.001 : 0); } const t = card.querySelector('.xl-row-txt .t'); if (t) t.lastChild.textContent = ' ' + (labelFor({ clip: c, i: S.clips.indexOf(c), n: S.clips.length }) || (c.kind === 'image' ? 'Photo' : 'Video')); return; }
+  if (a === 'text') { c.text = e.target.value.slice(0, 70); dirty(); const s0 = segOf(c); if (s0 && !(T >= s0.start && T < s0.start + s0.dur)) seekTo(s0.start + Math.min(0.5, s0.dur / 2)); edited(s0 ? s0.start + 0.001 : 0); return; }
+  if (a === 'zoom' || a === 'fx' || a === 'fy') {
+    const v = parseFloat(e.target.value);
+    c[a] = a === 'zoom' ? clamp(v, 1, 3) : clamp(v, 0, 1);
+    rangeFill(e.target);
+    const em = card.querySelector('.v-' + a); if (em) em.textContent = a === 'zoom' ? c.zoom.toFixed(2) + 'x' : Math.round(c[a] * 100);
+    const s0 = segOf(c); setPlaying(false); S.sel = c.id;
+    if (s0 && !(T >= s0.start && T < s0.start + s0.dur)) seekTo(s0.start + Math.min(0.5, s0.dur / 2));
+    dirty(600); paintBoxes(); if (s0) edited(s0.start + 0.001);
+    return;
+  }
   if (a === 'in' || a === 'out' || a === 'len') {
     const v = parseFloat(e.target.value);
     if (a === 'in') { c.inT = clamp(v, 0, c.outT - 0.3); e.target.value = c.inT; }
@@ -1161,8 +1300,9 @@ async function renderAudio(P2) {
     const g = oac.createGain(), e0 = s.start, e1 = s.start + s.dur, f = Math.min(0.08, s.dur / 4);
     g.gain.setValueAtTime(0, e0); g.gain.linearRampToValueAtTime(1, e0 + f);
     g.gain.setValueAtTime(1, e1 - f); g.gain.linearRampToValueAtTime(0, e1);
+    src.playbackRate.value = spd(s.clip);
     src.connect(g).connect(oac.destination);
-    src.start(e0, Math.min(s.clip.inT, buf.duration), s.dur);
+    src.start(e0, Math.min(s.clip.inT, buf.duration), s.dur * spd(s.clip));
     any = true;
   }
   if (S.music) {
@@ -1248,7 +1388,7 @@ async function exportReel() {
       if (err) throw err;
       const t = f / FPS;
       const s = segAt(P2, t);
-      if (s && s.kind === 'clip' && s.clip.kind === 'video') await seekVideo(s.clip.el, clamp(s.clip.inT + (t - s.start), 0, s.clip.srcDur - 0.001));
+      if (s && s.kind === 'clip' && s.clip.kind === 'video') await seekVideo(s.clip.el, srcTime(s.clip, s, t));
       drawFrame(cx, t, P2);
       const vf = new VideoFrame(cv, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / FPS) });
       venc.encode(vf, { keyFrame: f % (FPS * 2) === 0 });
@@ -1378,11 +1518,10 @@ async function sampleFootage(onProg) {
 }
 
 /* a box the editor drew on the raw frame, moved into the 9:16 picture */
-function srcBoxToOut(src, fit, b) {
-  const [mw, mh] = mediaSize(src);
-  if (!mw || !mh) return null;
-  const s = fit === 'fit' ? Math.min(OUT_W / mw, OUT_H / mh) : Math.max(OUT_W / mw, OUT_H / mh);
-  const ox = (OUT_W - mw * s) / 2, oy = (OUT_H - mh * s) / 2;
+function srcBoxToOut(src, fit, b, shot) {
+  const g = mediaRect(Object.assign({}, src, { zoom: 1, fx: 0.5, fy: 0.5 }, shot ? { zoom: shot.zoom, fx: shot.fx, fy: shot.fy } : {}), 1, 0, 0, fit);
+  if (!g) return null;
+  const mw = g.mw, mh = g.mh, s = g.W / mw, ox = g.x, oy = g.y;
   const pw = b.w * 0.15, ph = b.h * 0.15;                 // pad, the box stays put for the shot
   let x0 = (ox + (b.x - pw) * mw * s) / OUT_W, y0 = (oy + (b.y - ph) * mh * s) / OUT_H;
   let x1 = (ox + (b.x + b.w + pw) * mw * s) / OUT_W, y1 = (oy + (b.y + b.h + ph) * mh * s) / OUT_H;
@@ -1399,8 +1538,12 @@ function applyPlan(plan) {
     const inT = img ? 0 : clamp(sh.in, 0, Math.max(0, src.srcDur - 0.3));
     const outT = img ? clamp(sh.out - sh.in, 1, 10) : clamp(sh.out, inT + 0.3, src.srcDur);
     const fit = sh.fit === 'fit' || sh.fit === 'fill' ? sh.fit : src.fit;
-    shots.push(shotFrom(src, { inT, outT, label: sh.label || '', fit,
-      blurs: (sh.blur || []).map(b => srcBoxToOut(src, fit, b)).filter(Boolean) }));
+    const fo = sh.focus || {};
+    const extra = { speed: img ? 1 : clamp(Number(sh.speed) || 1, 0.25, 4), motion: MOTION_LABEL[sh.motion] ? sh.motion : 'auto',
+      zoom: clamp(Number(sh.zoom) || 1, 1, 3), fx: Number.isFinite(fo.x) ? clamp(fo.x, 0, 1) : 0.5, fy: Number.isFinite(fo.y) ? clamp(fo.y, 0, 1) : 0.5,
+      text: String(sh.text || '').slice(0, 70), textPos: ['top', 'center', 'bottom'].includes(sh.text_pos) ? sh.text_pos : 'center' };
+    shots.push(shotFrom(src, Object.assign({ inT, outT, label: sh.label || '', fit,
+      blurs: (sh.blur || []).map(b => srcBoxToOut(src, fit, b, extra)).filter(Boolean) }, extra)));
   });
   if (!shots.length) throw new Error('The edit used no footage that is still here');
   setPlaying(false);
@@ -1409,6 +1552,9 @@ function applyPlan(plan) {
   $('f-title').value = S.title; $('f-service').value = S.service;
   setTpl(plan.template || 'walk');
   if (plan.cut) setCut(plan.cut);
+  setLook(Object.assign(lookDefaults(), plan.look || {}));
+  if (plan.look && typeof plan.look.cta === 'string') { S.cta = plan.look.cta; $('f-cta').value = S.cta; }
+  if (plan.look && typeof plan.look.tag === 'string') { S.tag = plan.look.tag; $('f-tag').value = S.tag; }
   seekTo(0);
   $('rev-why').textContent = plan.why || 'Here is the cut.';
   $('rev-cap').value = plan.caption || '';
@@ -1478,7 +1624,11 @@ async function autoEdit(prev) {
 function planFromState() {
   return {
     template: S.tpl, title: S.title, service: S.service,
-    shots: S.clips.map(c => ({ footage: c.src ? c.src.fid : 0, in: +c.inT.toFixed(2), out: +c.outT.toFixed(2), label: c.label || '' })),
+    cut: S.cut, look: { headline: S.look.headline, lower_third: S.look.lower, background: S.look.bg, shade: S.look.shade, logo: S.look.logo,
+      end_card: S.look.end, end_seconds: S.look.endLen, end_line: S.cta, end_small: S.tag },
+    shots: S.clips.map(c => ({ footage: c.src ? c.src.fid : 0, in: +c.inT.toFixed(2), out: +c.outT.toFixed(2), label: c.label || '',
+      fit: c.fit, speed: spd(c), motion: c.motion || 'auto', zoom: +(c.zoom || 1).toFixed(2), focus: { x: +(c.fx != null ? c.fx : 0.5).toFixed(3), y: +(c.fy != null ? c.fy : 0.5).toFixed(3) },
+      text: c.text || '', text_pos: c.textPos || 'center' })),
     caption: $('rev-cap').value, length: plan().clipsEnd
   };
 }
@@ -1517,6 +1667,24 @@ $('btn-copy').onclick = async () => {
 };
 
 /* ── wiring ─────────────────────────────────────────────────────────── */
+function setLook(lk) {
+  S.look = Object.assign(lookDefaults(), lk || {});
+  document.querySelectorAll('#look [data-look]').forEach(g => {
+    const v = String(S.look[g.dataset.look]);
+    g.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  });
+  const r = $('end-len'); r.value = S.look.endLen; rangeFill(r); $('end-len-v').textContent = Number(S.look.endLen).toFixed(1) + 's';
+  $('end-len-row').style.display = S.look.end ? '' : 'none';
+  replan(true);
+}
+document.querySelectorAll('#look [data-look]').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button[data-v]'); if (!b) return;
+  const k = g.dataset.look, raw = b.dataset.v;
+  const lk = Object.assign({}, S.look, { [k]: raw === 'true' ? true : raw === 'false' ? false : raw });
+  setLook(lk);
+  edited(k === 'end' ? Math.max(0, P.clipsEnd - 0.5) : 0);
+}));
+$('end-len').addEventListener('input', e => { S.look.endLen = clamp(parseFloat(e.target.value) || 2.6, 1.5, 5); rangeFill(e.target); $('end-len-v').textContent = S.look.endLen.toFixed(1) + 's'; replan(true); edited(P.clipsEnd); });
 function setCut(k) {
   S.cut = ['hard', 'dip', 'flash'].includes(k) ? k : 'hard';
   document.querySelectorAll('#cut-seg button').forEach(b => b.classList.toggle('on', b.dataset.cut === S.cut));
@@ -1577,6 +1745,7 @@ K.init({ scroller: $('scroller'), nav: $('nav'), largeTitle: $('large-title') })
 K.hFade($('foot'));
 setTpl('ba');
 setCut('hard');
+setLook(lookDefaults());
 renderMusic();
 renderFootage();
 loadRules(true);
@@ -1674,7 +1843,9 @@ function footMeta(f) {
 }
 function shotMeta(c, f) {
   return { f, inT: Math.round(c.inT * 1000) / 1000, outT: Math.round(c.outT * 1000) / 1000, label: c.label || '',
-    fit: c.fit, audio: !!c.audio, blurs: (c.blurs || []).map(b => ({ x: r4(b.x), y: r4(b.y), w: r4(b.w), h: r4(b.h) })) };
+    fit: c.fit, audio: !!c.audio, blurs: (c.blurs || []).map(b => ({ x: r4(b.x), y: r4(b.y), w: r4(b.w), h: r4(b.h) })),
+    speed: spd(c), motion: c.motion || 'auto', zoom: r4(c.zoom || 1), fx: r4(c.fx != null ? c.fx : 0.5), fy: r4(c.fy != null ? c.fy : 0.5),
+    text: c.text || '', textPos: c.textPos || 'center' };
 }
 function projState() {
   const footage = S.sources.map(footMeta).concat(S.missing.map(m => m.meta));
@@ -1686,7 +1857,7 @@ function projState() {
   const m = S.music ? { key: S.music.key || '', name: S.music.name, size: S.music.file ? S.music.file.size : 0, vol: Math.round(S.music.vol * 100) / 100, dur: S.music.dur || 0 } : (S.musicMissing || null);
   const review = $('review').classList.contains('on');
   return {
-    v: 1, footage, shots, tpl: S.tpl, cut: S.cut, title: S.title, service: S.service, cta: S.cta, tag: S.tag, music: m,
+    v: 1, footage, shots, tpl: S.tpl, cut: S.cut, look: Object.assign({}, S.look), title: S.title, service: S.service, cta: S.cta, tag: S.tag, music: m,
     note: $('ai-note').value,
     ai: (S.plan || review) ? { plan: S.plan || null, usage: S.usage || null, why: $('rev-why').textContent, caption: $('rev-cap').value,
       tags: $('rev-tags').value, notes: $('rev-notes').value, meta: $('rev-meta').textContent } : null,
@@ -1757,7 +1928,7 @@ function resetStudio() {
   $('rev-rule').checked = false;
   $('ai-status').classList.remove('err');
   $('result').classList.remove('on'); lastBlob = null; if (lastUrl) { URL.revokeObjectURL(lastUrl); lastUrl = null; } $('res-video').removeAttribute('src');
-  setTpl('ba'); setCut('hard');
+  setTpl('ba'); setCut('hard'); setLook(lookDefaults());
   renderFootage(); renderClips(); renderMusic(); renderMissing(); replan(false); seekTo(0);
   PROJ = null; savedJs = ''; triedJs = ''; retryAt = 0;
   setStatus('', 'Add footage to start - it saves as you go');
@@ -1787,7 +1958,10 @@ function shotFromSpec(src, sp) {
   const inT = img ? 0 : clamp(Number(sp.inT) || 0, 0, Math.max(0, src.srcDur - 0.3));
   const outT = img ? clamp(Number(sp.outT) || 3, 1, 10) : clamp(Number(sp.outT) || src.srcDur, inT + 0.3, src.srcDur);
   return shotFrom(src, { inT, outT, label: sp.label || '', fit: sp.fit === 'fit' || sp.fit === 'fill' ? sp.fit : src.fit,
-    audio: img ? false : sp.audio !== false, blurs: (Array.isArray(sp.blurs) ? sp.blurs : []).map(b => ({ x: +b.x || 0, y: +b.y || 0, w: +b.w || 0, h: +b.h || 0 })) });
+    audio: img ? false : sp.audio !== false, blurs: (Array.isArray(sp.blurs) ? sp.blurs : []).map(b => ({ x: +b.x || 0, y: +b.y || 0, w: +b.w || 0, h: +b.h || 0 })),
+    speed: img ? 1 : clamp(Number(sp.speed) || 1, 0.25, 4), motion: MOTION_LABEL[sp.motion] ? sp.motion : 'auto', zoom: clamp(Number(sp.zoom) || 1, 1, 3),
+    fx: Number.isFinite(+sp.fx) && sp.fx != null ? clamp(+sp.fx, 0, 1) : 0.5, fy: Number.isFinite(+sp.fy) && sp.fy != null ? clamp(+sp.fy, 0, 1) : 0.5,
+    text: String(sp.text || '').slice(0, 70), textPos: ['top', 'center', 'bottom'].includes(sp.textPos) ? sp.textPos : 'center' });
 }
 function renderMissing() {
   const host = $('miss'), n = S.missing.length, mu = S.musicMissing;
@@ -1854,7 +2028,7 @@ async function restoreProject(p, quiet) {
       $('rev-notes').value = p.ai.notes || ''; $('rev-meta').textContent = p.ai.meta || '';
       $('review').classList.add('on');
     }
-    setTpl(S.tpl); setCut(p.cut || 'hard');
+    setTpl(S.tpl); setCut(p.cut || 'hard'); setLook(p.look || lookDefaults());
     renderFootage(); renderClips(); renderMusic(); renderMissing(); replan(false); seekTo(0);
     const ex = await idbGet('exp:' + p.id);
     if (ex && ex.blob instanceof Blob && ex.info) showResult(ex.blob, ex.info, true);
@@ -1968,7 +2142,7 @@ $('proj-name').addEventListener('click', () => {
 window.XLStudio = {
   build: XL_STUDIO_BUILD, S, plan: () => plan(), addFiles, addMusic, exportReel, setTpl, autoEdit, applyPlan, srcBoxToOut, planFromState,
   get lastBlob() { return lastBlob; }, get T() { return T; }, get playing() { return playing; }, seekTo,
-  get proj() { return PROJ; }, setCut, projState, autosaveTick, openProject, resetStudio, idbKeys, drawFrame, pickVideoCodec, pickAudioCodec
+  get proj() { return PROJ; }, setCut, setLook, mediaRect, projState, autosaveTick, openProject, resetStudio, idbKeys, drawFrame, pickVideoCodec, pickAudioCodec
 };
 })();
 </script>
