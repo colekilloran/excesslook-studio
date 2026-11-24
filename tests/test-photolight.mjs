@@ -184,12 +184,12 @@ try {
   await ph.evaluate(() => window.XLStudio.setKind && 0);
   const o = await ph.evaluate(() => { const w = document.documentElement.clientWidth; return [...document.querySelectorAll('body *')].filter(e => { const r = e.getBoundingClientRect(); return r.width && r.right > w + 1 && !e.closest('.xl-toast') && !e.closest('#vid-holder') && !e.closest('#pj-sheet') && !e.closest('#card-sheet'); }).map(e => e.id || e.className || e.tagName).slice(0, 5); });
   check(14, (await ph.evaluate(() => window.XLStudio.S.colors[0].photoLight)) === 'overcast' && !o.length, 'phone: overcast picked and saved on the color; nothing past the edge ' + JSON.stringify(o));
-  // ST1o - typing a Paltrix code fills the finish from its letter
+  // ST1p - typing a Paltrix code fills the finish from its series
   await ph.tap('#add-color');
   await ph.fill('#colors .colr:last-child [data-cf="brand"]', 'Paltrix');
-  await ph.fill('#colors .colr:last-child [data-cf="code"]', 'P702M');
+  await ph.fill('#colors .colr:last-child [data-cf="code"]', '1005-Y-N01');
   const pf = await ph.evaluate(() => { const c = window.XLStudio.S.colors[window.XLStudio.S.colors.length - 1]; const on = document.querySelector('#colors .colr:last-child [data-a="cfin"].on'); return [c.finish, on && on.dataset.v]; });
-  check(16, /^ST1[o-z]-/.test(await ph.evaluate(() => window.XL_STUDIO_BUILD)) && pf[0] === 'matte' && pf[1] === 'matte', 'a Paltrix code typed in sets the finish (P702M = matte) ' + JSON.stringify(pf));
+  check(16, /^ST1[p-z]-/.test(await ph.evaluate(() => window.XL_STUDIO_BUILD)) && pf[0] === 'matte' && pf[1] === 'matte', 'a Paltrix code typed in sets the finish (1005-Y-N01 = Matte Series) ' + JSON.stringify(pf));
   check(15, errors.length === 0, 'no page errors ' + JSON.stringify(errors.slice(0, 3)));
 } catch (e) { console.error(e); fail++; }
 await b.close(); server.close();

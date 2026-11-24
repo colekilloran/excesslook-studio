@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1m-2026-11-24-paltrixcode';
+export const CORE_BUILD = 'SC1n-2026-11-24-paltrixcatalog';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -745,29 +745,201 @@ export const FILM_TOOL = {
   }
 };
 const FILM_BRIEF = 'You research automotive wrap and paint protection films for Excess Look Auto Solutions, a detailing and PPF shop. '
-  + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com, paltrixppf-site.pages.dev and so on), then installer galleries and reviews for how it really looks on cars. '
+  + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com, paltrixppf.com and so on), then installer galleries and reviews for how it really looks on cars. '
   + 'Work out the finish, the base color, any metallic flake (its color and size), any color shift and the angles, and how it reads in sun, shade, overcast and at night. '
   + 'If the owner attached a photo of the sample, use it to confirm and fine-tune the color, but trust the manufacturer\'s data over a photo taken under shop lights. '
-  + 'Paltrix codes read category + color number + finish series, e.g. P701G = Color PPF, color 701 (Midnight Sapphire), Gloss series (M = Matte, S = Satin). '
-  + 'Paltrix publishes only a few of its colors online, so most valid Paltrix codes cannot be found on the web - a code in that format is VALID: never call it unrecognized, unknown or a bad format. '
-  + 'For a Paltrix color you cannot find online, use the decoded color number and finish, the color name and the owner\'s photo of the Paltrix sample chip (corrected for the light it was taken in) as the source of truth: confidence close with a sample photo, estimate without one. '
+  + 'Paltrix (paltrixppf.com) codes read series - series letter - color family + number, e.g. 1002-C-A31 = Solid Color Series, grey family, High Gloss Cement Grey. Series: 1002-C Solid (gloss), 1003-H Chameleon / color shift, 1005-Y Matte and Satin, 1006-Z Pearl / metallic, 1007-F Carbon Fiber, 1008-L Laser. '
+  + 'When the request says the Paltrix code is in their catalog, that name and series are certain - never call the code unrecognized or a bad format; find its page on paltrixppf.com for photos of the film. '
   + 'Clear films (like XPEL Stealth or any clear satin / gloss PPF) do not change the paint color - say so with clear = true. '
   + 'Never invent a code. If you cannot find the product, say so in note and set confidence to estimate. Then call submit_film once.';
-/* SC1m - Cole: "its not recognizing paltrix ppf color codes on the color cards" / "its saying its not recognizing the code
-   format". Paltrix codes are P + 3-digit color number + G / M / S finish (their full roll serial adds a batch and serial,
-   P701G20260512A12345). They publish almost none of them online, so research could not find the code and called the
-   format unrecognized. The code is decoded here, handed to research as fact, and a "format" complaint never reaches Cole. */
-const PALTRIX_FIN = { G: ['gloss', 'Gloss'], M: ['matte', 'Matte'], S: ['satin', 'Satin'] };
-export function decodePaltrix(brand, code) {
-  const raw = String(code || '').toUpperCase().replace(/[\s._\-\/]+/g, '');
-  const isBrand = /paltrix/i.test(String(brand || ''));
-  const m = raw.match(/^(P)?(\d{3})([GMS])?(?:\d{8}[A-Z]\d{5})?$/);
-  if (!m || (!isBrand && (String(brand || '').trim() || !(m[1] && m[3])))) return null;
-  const f = m[3] ? PALTRIX_FIN[m[3]] : null;
-  return { code: 'P' + m[2] + (m[3] || ''), number: m[2], finish: f ? f[0] : '', series: f ? f[1] : '' };
+/* SC1n - Cole: "its saying its not recognizing the code format", then sent paltrixppf.com showing "High Gloss Cement Grey
+   1002-C-A31". SC1m was built on a look-alike site's made-up "P701G" format (wrong - removed). Real Paltrix codes are
+   <series number>-<series letter>-<color family letter><2 digits>. Their whole online catalog (paltrixppf.com, read
+   2026-11-24) is below, so a code on a card resolves to its exact name and series before research starts. */
+export const PALTRIX_SERIES = {
+  '1002-C': { name: 'Solid Color Series', page: 'solid', finish: 'gloss', card: 'gloss' },
+  '1003-H': { name: 'Chameleon Series', page: 'chameleon', finish: 'color shift', card: 'color shift' },
+  '1005-Y': { name: 'Matte Series', page: 'matte', finish: 'matte', card: 'matte' },
+  '1006-Z': { name: 'Pearl Series', page: 'pearl', finish: 'pearl', card: 'metallic' },
+  '1007-F': { name: 'Carbon Fiber Series', page: 'carbon', finish: 'carbon', card: '' },
+  '1008-L': { name: 'Laser Series', page: 'chameleon', finish: 'color shift', card: 'color shift' }
+};
+const PALTRIX_FAMILY = { A: 'grey', B: 'black / brown', C: 'cyan / teal', G: 'gold / grey', L: 'color shift', N: 'green', O: 'orange', P: 'pink', R: 'red', S: 'silver', U: 'blue', V: 'purple / violet', W: 'white', Y: 'yellow' };
+export const PALTRIX_COLORS = Object.fromEntries(`
+1002-C-C80|Crystal Aqua Blue
+1002-C-Y70|Cuban Sand Yellow (Deep)
+1002-C-B20|Crystal Black
+1002-C-A65|Crystal Chalk Grey
+1002-C-N64|Crystal Khaki Green
+1002-C-P91|Crystal Lavender Purple
+1002-C-U52|Crystal Miami Blue
+1002-C-A59|Crystal Nardo Grey
+1002-C-B30|Crystal Paint Chocolate
+1002-C-R39|Crystal Racing Red
+1002-C-Y83|Sahara Yellow
+1002-C-Y87|Butter Yellow (NIO)
+1002-C-P95|Crystal Star Viot
+1002-C-U59|Crystal Autumn Blue
+1002-C-A50|Crystal Battleship Grey
+1002-C-V50|Crystal Beetroot Purple
+1002-C-A57|Crystal Brooklyn Grey
+1002-C-A44|Crystal Cement Grey
+1002-C-N25|Crystal Dark Jade Green
+1002-C-A66|Crystal Genmaicha Brown
+1002-C-U90|Crystal Glacier Blue
+1002-C-N83|Crystal Greyish Green
+1002-C-P89|Crystal Koi Pink
+1002-C-P40|Crystal Lilac Purple
+1002-C-N65|Crystal Lizard Green (Audi)
+1002-C-O61|Crystal Lotus Orange
+1002-C-U05|Crystal Lugano Blue
+1002-C-U65|Crystal Meissen Blue
+1002-C-P66|Crystal Mirror Sky Pink
+1002-C-V66|Crystal Mist Grey Purple
+1002-C-V77|Crystal Morandi Purple
+1002-C-P56|Crystal Oolong Milk Tea Pink
+1002-C-W90|Crystal Pepper White
+1002-C-A33|Crystal Polar Grey
+1002-C-U49|Crystal Porcelain Blue
+1002-C-P81|Crystal Sakura Pink
+1002-C-U73|Crystal Sea Breeze Blue
+1002-C-P86|Crystal Shell Pink
+1002-C-U80|Crystal Sky Blue
+1002-C-U61|Crystal Star Blue
+1002-C-Y74|Crystal Sunbathe Yellow (NIO)
+1002-C-Y79|Crystal Sunflower Yellow
+1002-C-N26|Crystal Turquoise Green
+1002-C-V52|Crystal Victoria Purple
+1002-C-N90|Crystal Water Green
+1002-C-W96|Crystal White
+1002-C-C73|Crystal Zandvoort Blue
+1002-C-N53|Glossy Khaki Green
+1002-C-N32|Hell Green (Audi)
+1002-C-A31|High Gloss Cement Grey
+1002-C-A43|High Gloss Dark Gray
+1002-C-O52|Lava Orange (Porsche)
+1002-C-Y61|Original Desert Yellow (Mercedes-Benz)
+1002-C-N84|Segano Green (Rolls Royce)
+1002-C-O78|Tiffany (McLaren)
+1005-Y-N01|Matte Combat Green
+1005-Y-W10|Matte Liquid Metal Crescent White
+1005-Y-S01|Matte Mountain Grey
+1005-Y-W01|Matte Pearl White
+1005-Y-S05|Matte Aluminium Mercury
+1005-Y-Y84|Matte AMG Desert Yellow (Mercedes-Benz)
+1005-Y-B01|Matte Black
+1005-Y-U10|Matte Blue Charm Gold
+1005-Y-W02|Matte Ceramic White
+1005-Y-V06|Matte Chrome Purple
+1005-Y-S08|Matte Chrome Tungsten
+1005-Y-P01|Matte Fresh Pink
+1005-Y-R01|Matte Grey Charm Red
+1005-Y-N05|Matte Liquid Combat Green
+1005-Y-G03|Matte Liquid Shadow Gold (Lamborghini)
+1005-Y-R02|Matte Romanee Red
+1005-Y-W09|Matte Twilight White
+1005-Y-V05|Matte Violet Purple
+1005-Y-V07|Satin Black Magic Purple
+1005-Y-U11|Satin Competition Blue (Aston Martin)
+1005-Y-S09|Satin Dark Silver
+1005-Y-N04|Satin Olive Green (Aston Martin)
+1005-Y-V01|Satin Pinot Noir Purple Metallic
+1005-Y-W03|Super Matte White
+1006-Z-V04|Berry Purple
+1006-Z-N08|Emerald Green
+1006-Z-A01|Graphite Gray
+1006-Z-V10|Midnight Purple
+1006-Z-O03|Racing Orange
+1006-Z-N09|Acid Green
+1006-Z-U12|Aquamarine Black (BMW)
+1006-Z-R10|Black Cherry Wine (Rolls-Royce)
+1006-Z-U01|Blue and Purple
+1006-Z-U07|Blue Crystal
+1006-Z-U14|Blue Metallic (Porsche)
+1006-Z-R09|Brocade Red
+1006-Z-U08|Carbon Grey Blue (BMW)
+1006-Z-N12|Eucalyptus Green
+1006-Z-U03|Flowing Black Charm Blue
+1006-Z-R02|Flowing Black Charm Red
+1006-Z-U13|Gentian Blue (Porsche)
+1006-Z-N14|Ghost Green Metallic
+1006-Z-R11|Glazed Tatar Red Metallic
+1006-Z-U06|Interstellar Blue Liquid Metal
+1006-Z-B02|Liquid Metal Coffee
+1006-Z-N11|Liquid Metal Green
+1006-Z-V08|Liquid Metal Purple
+1006-Z-O02|Lotus Orange
+1006-Z-O01|Lucky Orange
+1006-Z-V06|Metallic Amethyst
+1006-Z-U09|Metallic Paint Glacier Blue
+1006-Z-A03|Nardo Gray (Audi)
+1006-Z-R03|Pearl Wine Red
+1006-Z-N10|Royal Green
+1006-Z-N15|Sand Green (Porsche)
+1006-Z-U02|Sapphire Blue
+1006-Z-R08|Sparkling Red Purple
+1006-Z-U04|Tanzanite Blue
+1006-Z-C01|Tiffany Charm Gold
+1006-Z-L03|Purple Red Blue
+1006-Z-L01|Chameleon Green Silver Purple
+1006-Z-L02|Chameleon Purple Blue Cyan
+1003-H-P05|Magic Purple
+1003-H-A04|Dreamy Volcano Grey
+1003-H-P06|Matte Metallic Sakura Pink
+1003-H-G05|Blue Charm Gold
+1003-H-P03|Candy Magic Pink
+1003-H-B03|Colorful Cerulean Blue
+1003-H-N05|Colorful Mint Green
+1003-H-Y01|Coral Orange (Aston Martin)
+1003-H-R06|Crimson Red (Tesla)
+1003-H-V08|Deep Orchid Amethyst
+1003-H-G02|Deep Space Grey
+1003-H-W14|Diamond Pearl White
+1003-H-P02|Diamond Rose Pink
+1003-H-W13|Diamond White Charm Gold
+1003-H-W06|Diamond White to Blue
+1003-H-W04|Diamond White to Purple
+1003-H-W02|Diamond White to Red
+1003-H-U03|Glowing Blue Charm Pink
+1003-H-P04|Glowing Vibrant Pink
+1003-H-U01|Gold Diamond Glacier Blue
+1003-H-V10|Gray Violet (Bentley)
+1003-H-U02|Grey Charm Blue
+1003-H-R05|Grey Charm Red
+1003-H-V09|Magic Grey Charm Purple
+1003-H-W15|Moonlight White
+1003-H-W16|Pearl White (Lexus)
+1003-H-B04|Pearlescent Black
+1003-H-W07|Phantom White to Gold
+1003-H-R02|Twilight Red
+1003-H-W09|Twilight White
+1003-H-B01|Yuanfeng Blue Charm Gold
+1007-F-B01|Black Carbon Fiber
+1008-L-B01|Laser Black
+`.trim().split('\n').map(l => l.split('|')));
+const pNorm = v => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+export function decodePaltrix(brand, code, name) {
+  const b = String(brand || '').trim(), isBrand = /paltrix/i.test(b);
+  if (b && !isBrand) return null;
+  const m = String(code || '').toUpperCase().replace(/\s+/g, '').match(/^(\d{4})[-_.]?([A-Z])[-_.]?([A-Z])[-_.]?(\d{2})$/);
+  let c = m ? m[1] + '-' + m[2] + '-' + m[3] + m[4] : '';
+  if (c && !PALTRIX_SERIES[c.slice(0, 6)] && !isBrand) return null;
+  if (!c && isBrand && name && !String(code || '').trim()) {          // no code printed: an exact catalog name only (two "Nardo" greys exist)
+    const n = pNorm(name), hit = Object.keys(PALTRIX_COLORS).filter(k => pNorm(PALTRIX_COLORS[k]) === n);
+    if (hit.length === 1) c = hit[0];
+  }
+  if (!c) return null;
+  const ser = PALTRIX_SERIES[c.slice(0, 6)] || null, nm = PALTRIX_COLORS[c] || '';
+  let finish = ser ? ser.finish : '', card = ser ? ser.card : '';
+  if (c.startsWith('1005-Y') && /^satin/i.test(nm)) { finish = /metallic/i.test(nm) ? 'metallic satin' : 'satin'; card = 'satin'; }
+  if (c.startsWith('1006-Z-L')) { finish = 'color shift'; card = 'color shift'; }
+  return { code: c, name: nm, known: !!nm, series: ser ? ser.name : '', family: PALTRIX_FAMILY[c[7]] || '', finish, cardFinish: card,
+    page: 'https://paltrixppf.com/colors/' + (ser ? ser.page : 'solid') + '/update/' };
 }
 export function paltrixLine(d) {
-  return 'Paltrix code decoded (this is certain, the format is valid): ' + d.code + ' = Color PPF, color number ' + d.number + (d.series ? ', ' + d.series + ' finish series' : ', finish letter not given') + '. Paltrix does not publish most colors online - if you cannot find ' + d.number + ', match from the sample photo and the name.';
+  return d.known
+    ? 'Paltrix catalog (certain): ' + d.code + ' = ' + d.name + ', ' + d.series + ' (' + d.finish + '). Find it on ' + d.page + ' - each color has its own page there with photos of the film.'
+    : 'Paltrix code ' + d.code + ' is in the valid Paltrix format' + (d.series ? ' - ' + d.series + ' (' + d.finish + ')' : '') + (d.family ? ', ' + d.family + ' family' : '') + ', but not in the catalog list we have - look for it on paltrixppf.com; if it is not there, match from the sample photo and the name.';
 }
 const HEX = /^#?[0-9a-f]{6}$/i;
 export function validateFilm(sp) {
@@ -791,7 +963,7 @@ export function validateFilm(sp) {
 export function filmRequest(body, env) {
   const ask = ['Brand: ' + clean(body.brand, 40), 'Product line: ' + clean(body.line, 60), 'Color name: ' + clean(body.name, 60), 'Color code: ' + clean(body.code, 40),
     'Owner says the finish is: ' + (clean(body.finish, 30) || 'not sure'), body.notes ? 'Owner notes: ' + clean(body.notes, 300) : '',
-    decodePaltrix(body.brand, body.code) ? paltrixLine(decodePaltrix(body.brand, body.code)) : '',
+    decodePaltrix(body.brand, body.code, body.name) ? paltrixLine(decodePaltrix(body.brand, body.code, body.name)) : '',
     body.swatch && PHOTO_LIGHT[body.photoLight] ? PHOTO_LIGHT[body.photoLight] + ' Give the hex values and base color for the film itself in open shade, not as the photo shows it.' : ''].filter(Boolean).join('\n');
   const content = [];
   if (body.swatch && /^[A-Za-z0-9+/=]+$/.test(String(body.swatch).slice(0, 200))) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: body.swatch } }, { type: 'text', text: 'Above: the owner\'s photo of the sample.' });
@@ -824,11 +996,13 @@ export async function runFilm({ body, store, fetchImpl, env }) {
     }
     if (!found) throw new Error('The research did not finish - try again');
     const spec = validateFilm(found);
-    const pd = decodePaltrix(body.brand, body.code);
+    const pd = decodePaltrix(body.brand, body.code, body.name);
     if (pd) {
-      spec.code = spec.code || pd.code; spec.brand = spec.brand || 'Paltrix';
+      spec.code = pd.code; spec.brand = 'Paltrix';
+      if (pd.known) { spec.color_name = pd.name; spec.product_line = pd.series; }
       if (!spec.finish && pd.finish) spec.finish = pd.finish;
-      if (/recogni[sz]|format|invalid|not a (valid|known)|doesn.t match|unknown code/i.test(spec.note)) spec.note = 'Paltrix does not list ' + pd.code + ' online - the color was matched from your card photo and the name. Check it against the card.';
+      if (/recogni[sz]|format|invalid|not a (valid|known)|doesn.t match|unknown code/i.test(spec.note))
+        spec.note = pd.known ? 'Paltrix ' + pd.code + ' is ' + pd.name + ' (' + pd.series + ').' : 'Paltrix ' + pd.code + ' is not on their site yet - matched from your card photo and the name. Check it against the card.';
     }
     await store.setJSON(key, { status: 'done', spec, searches, at: new Date().toISOString(), core: CORE_BUILD });
     return { ok: true, spec };
@@ -873,7 +1047,7 @@ export const CARD_TOOL = {
 export const CARD_BRIEF = 'You read photos of wrap and paint protection film sample cards for Excess Look Auto Solutions, a detailing and PPF shop. '
   + 'Find every color chip on the card. For each one, copy the name and code printed next to it exactly as printed - never guess a code that is not printed. '
   + 'Give the box of the colored area itself (not the label, not the card border) as fractions of the photo. Read the brand and product line from the card. '
-  + 'Paltrix chips are coded P + 3-digit color number + G / M / S (gloss / matte / satin), e.g. P701G - copy it as printed and set the finish from that letter. '
+  + 'Paltrix chips are coded like 1002-C-A31 (series - letter - family letter + 2 digits) - copy it as printed. '
   + 'Then call submit_card once.';
 export function validateCard(c) {
   c = c && typeof c === 'object' ? c : {};
@@ -886,8 +1060,9 @@ export function validateCard(c) {
     return { name: clean(x && x.name, 60), code: clean(x && x.code, 40), finish: fin.includes(x && x.finish) ? x.finish : '', box: bx, readable: !(x && x.readable === false) };
   }).filter(x => (x.name || x.code) && x.box.w > 0.005 && x.box.h > 0.005);
   const brand = clean(c.brand, 40);
-  chips.forEach(x => { const d = decodePaltrix(brand, x.code); if (d) { x.code = d.code; if (d.finish) x.finish = d.finish; } });
-  return { brand: brand || (chips.some(x => /^P\d{3}[GMS]$/.test(x.code)) ? 'Paltrix' : ''), product_line: clean(c.product_line, 60), chips, note: clean(c.note, 300) };
+  let pal = false;
+  chips.forEach(x => { const d = decodePaltrix(brand, x.code, x.name); if (d) { pal = true; x.code = d.code; if (d.known && !x.name) x.name = d.name; if (d.cardFinish) x.finish = d.cardFinish; } });
+  return { brand: brand || (pal ? 'Paltrix' : ''), product_line: clean(c.product_line, 60), chips, note: clean(c.note, 300) };
 }
 export async function runCard({ body, store, fetchImpl, env }) {
   const id = safeId(body && body.id);

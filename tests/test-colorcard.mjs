@@ -138,7 +138,7 @@ try {
       await page.click('#go-settings');
       await page.waitForFunction(() => window.XLStudio.S.colors.every(c => c.research === 'done'), null, { timeout: 30000 });
       const fcs = filmCalls.slice(before);
-      check(5, fcs.length === 2 && fcs.every(c => c.messages[0].content[0].type === 'image') && fcs.some(c => /Color code: P701G/.test(c.messages[0].content.slice(-1)[0].text)) && /paltrixppf-site/.test(fcs[0].system),
+      check(5, fcs.length === 2 && fcs.every(c => c.messages[0].content[0].type === 'image') && fcs.some(c => /Color code: P701G/.test(c.messages[0].content.slice(-1)[0].text)) && /paltrixppf\.com/.test(fcs[0].system),
         'step 3 researches both with their chip photos and codes (Paltrix site in the brief)');
     }
     if (nm === 'phone') {
