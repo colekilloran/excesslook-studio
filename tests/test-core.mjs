@@ -319,7 +319,31 @@ await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'lj', i: '0' }, 
 await C.runRecolor({ body: { job: 'lj', renders: [{ k: 0, src: 0, color: 'Satin Dark Grey', spec: fsp, light: 'night' }, { k: 1, src: 0, color: 'x', light: 'disco' }] }, store: rs3, fetchImpl: async (u, o) => { oa3.push(o.body.get('prompt')); return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'QUJD' }] }) }; }, env: envImg });
 check(79, /night under street and shop lights/.test(oa3.find(x => /Dark Grey/.test(x))) && /2080-S261/.test(oa3.find(x => /Dark Grey/.test(x))) && !/Relight/.test(oa3.find(x => !/Dark Grey/.test(x))), 'renders pass the spec and light through; an unknown light is ignored');
 
-check(80, C.CORE_BUILD === 'SC1j-2026-11-24-paltrix' && /paltrixppf-site\.pages\.dev/.test(C.filmRequest({ brand: 'Paltrix' }, env).system) && /P701G = Color PPF, color 701/.test(C.filmRequest({}, env).system), 'Paltrix: their site and code format are in the research brief');
+check(80, /^SC1[j-z]-/.test(C.CORE_BUILD) && /paltrixppf-site\.pages\.dev/.test(C.filmRequest({ brand: 'Paltrix' }, env).system) && /P701G = Color PPF, color 701/.test(C.filmRequest({}, env).system), 'Paltrix: their site and code format are in the research brief');
+
+// 81-85 SC1k color cards - "i only have sample color cards for the brands of all the colors"
+check(81, C.CORE_BUILD === 'SC1k-2026-11-24-colorcard', 'core ' + C.CORE_BUILD);
+const ks = fakeStore(), kcalls = [];
+const putOk = await C.handleApi({ method: 'POST', op: 'img-put', query: { id: 'k1i' }, body: { jpg: 'QUJD'.repeat(100) }, store: ks, env });
+const putBad = await C.handleApi({ method: 'POST', op: 'img-put', query: { id: 'k1i' }, body: { jpg: '<x>' }, store: ks, env });
+check(82, putOk.status === 200 && putBad.status === 400 && ks.m.has('img/k1i'), 'a photo goes up through the API (background bodies stay small)');
+const cardFake = async (url, opt) => { const b = JSON.parse(opt.body); kcalls.push(b);
+  return { ok: true, status: 200, text: async () => JSON.stringify({ content: [{ type: 'tool_use', name: 'submit_card', input: { brand: 'Paltrix', product_line: 'Color PPF', note: 'Glare on chip 3',
+    chips: [{ name: 'Midnight Sapphire', code: 'P701G', finish: 'gloss', box: { x: 0.1, y: 0.2, w: 0.2, h: 0.3 } }, { name: 'Nardo', code: 'P702S', finish: 'satin', box: { x: 0.95, y: 0.9, w: 0.3, h: 0.3 }, readable: false },
+      { name: '', code: '', box: { x: 0.5, y: 0.5, w: 0.1, h: 0.1 } }, { name: 'Tiny', box: { x: 0.2, y: 0.2, w: 0, h: 0.1 } }] } }] }) }; };
+await C.runCard({ body: { id: 'k1', imgId: 'k1i' }, store: ks, fetchImpl: cardFake, env });
+const kg = await C.handleApi({ method: 'GET', op: 'card', query: { id: 'k1' }, store: ks, env });
+const kc = kg.json.card;
+check(83, kg.json.status === 'done' && kcalls[0].messages[0].content[0].type === 'image' && kcalls[0].messages[0].content[0].source.data === 'QUJD'.repeat(100) && kcalls[0].tools[0].name === 'submit_card' && /never guess a code/.test(kcalls[0].system),
+  'the card photo is read from the store and sent to Claude to read every chip');
+check(84, kc.brand === 'Paltrix' && kc.chips.length === 2 && kc.chips[0].code === 'P701G' && kc.chips[1].readable === false && Math.abs(kc.chips[1].box.w - 0.05) < 1e-9 && Math.abs(kc.chips[1].box.h - 0.1) < 1e-9 && !ks.m.has('img/k1i'),
+  'chips checked: nameless and empty-box chips dropped, boxes kept inside the photo, unreadable flagged; the upload is cleared');
+await C.runCard({ body: { id: 'k2', imgId: 'nope' }, store: ks, fetchImpl: cardFake, env });
+const k2 = await C.handleApi({ method: 'GET', op: 'card', query: { id: 'k2' }, store: ks, env });
+const fs2 = fakeStore(), fc2 = [];
+await C.handleApi({ method: 'POST', op: 'img-put', query: { id: 'sw9' }, body: { jpg: 'REVG'.repeat(100) }, store: fs2, env });
+await C.runFilm({ body: { id: 'f9', brand: 'Paltrix', code: 'P701G', swatchId: 'sw9' }, store: fs2, fetchImpl: async (u, o) => { fc2.push(JSON.parse(o.body)); return filmFake(u, o); }, env });
+check(85, /did not arrive/.test(k2.json.error) && fc2[0].messages[0].content[0].type === 'image' && fc2[0].messages[0].content[0].source.data === 'REVG'.repeat(100), 'a missing photo says so; film research reads its sample photo by id');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);

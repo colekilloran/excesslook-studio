@@ -598,7 +598,7 @@ body.rm .xl-act.urgent{animation:none}
 
 </style>
 <style>
-/* ══ REEL STUDIO - ST1k ══════════════════════════════════════════════════════
+/* ══ REEL STUDIO - ST1m ══════════════════════════════════════════════════════
    Raw footage in, finished reel out. An AI editor plans the cut from stills,
    this page renders it. Everything runs on the device: clips are read from
    the files you pick, the reel is drawn on a canvas and encoded by the
@@ -850,6 +850,22 @@ body.k-edit [data-kind="edit"],body.k-color [data-kind="color"]{display:block}
 .colr-sw img{width:48px;height:48px;border-radius:10px;object-fit:cover;border:2px solid #5BC0EB}
 .colr-sw .xl-add{margin-left:0}
 .colr .more-chips{margin-top:10px}
+.card-wrap{position:relative;border-radius:14px;overflow:hidden;background:#000;margin-bottom:12px;line-height:0}
+.card-wrap img{width:100%;height:auto;display:block}
+.card-box{position:absolute;border:2px solid rgba(255,255,255,.7);border-radius:6px;background:rgba(0,0,0,.12);cursor:pointer;padding:0;display:flex;align-items:flex-start;justify-content:flex-start}
+.card-box b{font:800 10px/1 Montserrat,sans-serif;color:#0A0A0A;background:rgba(255,255,255,.85);border-radius:0 0 5px 0;padding:2px 4px}
+.card-box.on{border-color:var(--gold);box-shadow:0 0 0 2px rgba(200,169,81,.45)}
+.card-box.on b{background:var(--gold)}
+.card-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.card-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:#14141A;border:1px solid var(--hair);cursor:pointer;color:var(--white);font-family:Montserrat,sans-serif;text-align:left;width:100%}
+.card-row.on{border-color:rgba(200,169,81,.6);background:linear-gradient(180deg,rgba(200,169,81,.08),#14141A)}
+.card-row canvas{width:40px;height:40px;border-radius:8px;flex:none;border:1px solid rgba(255,255,255,.15)}
+.card-row .ck{width:22px;height:22px;border-radius:50%;border:2px solid var(--dim);flex:none;display:flex;align-items:center;justify-content:center}
+.card-row.on .ck{border-color:var(--gold);background:var(--gold)}
+.card-row.on .ck::after{content:'';width:6px;height:10px;border:solid #0A0A0A;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.card-row .warn{color:#E5484D}
+.card-foot{position:sticky;bottom:0;display:flex;gap:10px;padding:10px 0 4px;background:linear-gradient(180deg,rgba(18,18,23,0),#121217 30%)}
+.card-foot .xl-btn{flex:1}
 .film{border-radius:16px;background:#121217;border:1px solid var(--hair);padding:14px;margin-bottom:10px}
 .film-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .film-h .t{flex:1;min-width:0;font-weight:700;font-size:14.5px}
@@ -956,6 +972,15 @@ details.memory summary::-webkit-details-marker{display:none}
   <div class="pj-sub" id="pj-sub">Every reel saves as you edit. Clips stay on the device that made them.</div>
   <div class="pj-list" id="pj-list"></div>
 </div>
+<div class="xl-veil" id="card-veil"></div>
+<div class="xl-sheet" id="card-sheet" role="dialog" aria-label="Pick colors from the card">
+  <div class="xl-grabber" id="card-grab"></div>
+  <div class="pj-t">PICK THE <span>COLORS</span></div>
+  <div class="pj-sub" id="card-sub">Tap each color you want in this reel.</div>
+  <div class="card-wrap" id="card-wrap"></div>
+  <div class="card-list" id="card-list"></div>
+  <div class="card-foot"><button class="xl-btn ghost press" type="button" id="card-all">Select All</button><button class="xl-btn gold press" type="button" id="card-add" disabled>Add Colors</button></div>
+</div>
 <button id="see-it" class="see-it xl-glass" type="button" aria-label="See the change in the preview"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>See It</button>
 <div id="scroller">
 <div class="wrap">
@@ -1034,7 +1059,12 @@ details.memory summary::-webkit-details-marker{display:none}
       <div class="xl-h2">PPF / VINYL <span style="color:var(--gold)">COLORS</span> <span class="ln"></span><span class="opt">Optional</span></div>
       <div class="xl-hint" id="colors-hint">Add each film you used or want to show. Give the brand and color code if you have it - the studio looks up the exact color, finish and flake. A photo of the sample helps.</div>
       <div id="colors"></div>
-      <button class="xl-photo add-clips press" id="add-color" type="button">
+      <button class="xl-photo add-clips press" id="scan-card" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="6" y="7" width="4" height="4"/><rect x="14" y="7" width="4" height="4"/><rect x="6" y="13" width="4" height="4"/><rect x="14" y="13" width="4" height="4"/></svg>
+        <span>Scan a color card - pick the colors off a photo of the sample card</span>
+      </button>
+      <input type="file" id="file-card" accept="image/*" hidden>
+      <button class="xl-photo add-clips press" id="add-color" type="button" style="margin-top:8px">
         <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         <span>Add a color</span>
       </button>
@@ -2629,7 +2659,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1l-2026-11-24-paltrix';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1m-2026-11-24-colorcard';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -4499,6 +4529,99 @@ $('file-swatch').addEventListener('change', async e => {
   } catch (er) { toast(er.message, true); }
 });
 
+/* ══ ST1m - SCAN A COLOR CARD ═════════════════════════════════════════════
+   Cole: "i only have sample color cards for the brands of all the colors". One photo of the maker's sample card;
+   Claude reads every chip and what is printed by it (studio-card-background -> op card); the sheet shows the photo
+   with each chip boxed and numbered - tap the ones for this reel - and each becomes a color card in step 2 with
+   brand / line / name / code / finish filled in and its own chip, cut from the photo, as the sample. */
+const CARDBG = '/.netlify/functions/studio-card-background';
+const CARDSCAN = { img: null, url: '', card: null, pick: new Set(), id: '' };
+function cardSheet(on) { $('card-veil').classList.toggle('on', on); $('card-sheet').classList.toggle('on', on); if (!on) $('card-sheet').style.transform = ''; }
+K.sheet($('card-sheet'), $('card-grab'), { onClose: () => cardSheet(false) });
+$('card-veil').addEventListener('click', () => cardSheet(false));
+$('scan-card').addEventListener('click', async () => { if (!(await unlock())) return; $('file-card').value = ''; $('file-card').click(); });
+function chipCanvas(box, size, inset) {
+  const im = CARDSCAN.img, W = im.naturalWidth, H = im.naturalHeight;
+  const ix = (inset || 0) * box.w, iy = (inset || 0) * box.h;
+  const sx = (box.x + ix) * W, sy = (box.y + iy) * H, sw = Math.max(1, (box.w - 2 * ix) * W), sh = Math.max(1, (box.h - 2 * iy) * H);
+  const sc = Math.min(1, size / Math.max(sw, sh)), cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(sw * sc)); cv.height = Math.max(1, Math.round(sh * sc));
+  cv.getContext('2d').drawImage(im, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+  return cv;
+}
+function renderCardPick() {
+  const c = CARDSCAN.card, chips = c.chips;
+  $('card-sub').textContent = (c.brand || c.product_line ? [c.brand, c.product_line].filter(Boolean).join(' ') + ' - ' : '') + chips.length + ' color' + (chips.length === 1 ? '' : 's') + ' found. Tap each one you want in this reel.' + (c.note ? ' ' + c.note : '');
+  $('card-wrap').innerHTML = '<img alt="The sample card" src="' + CARDSCAN.url + '">' + chips.map((x, i) => '<button type="button" class="card-box' + (CARDSCAN.pick.has(i) ? ' on' : '') + '" data-chip="' + i + '" aria-label="' + esc(x.name || x.code) + '" style="left:' + (x.box.x * 100) + '%;top:' + (x.box.y * 100) + '%;width:' + (x.box.w * 100) + '%;height:' + (x.box.h * 100) + '%"><b>' + (i + 1) + '</b></button>').join('');
+  $('card-list').innerHTML = chips.map((x, i) => '<button type="button" class="card-row press' + (CARDSCAN.pick.has(i) ? ' on' : '') + '" data-chip="' + i + '"><span class="ck"></span><canvas data-cv="' + i + '" width="40" height="40"></canvas>'
+    + '<span class="xl-row-txt"><span class="t">' + (i + 1) + '. ' + esc(x.name || '(no name printed)') + (x.code ? ' <span style="color:var(--dim)">' + esc(x.code) + '</span>' : '') + '</span>'
+    + '<span class="s">' + esc([x.finish, x.readable ? '' : 'label hard to read - check it'].filter(Boolean).join(' - ')) + '</span></span></button>').join('');
+  $('card-list').querySelectorAll('[data-cv]').forEach(cv => { const src = chipCanvas(chips[+cv.dataset.cv].box, 80, 0.12); const x = cv.getContext('2d'); x.drawImage(src, 0, 0, 40, 40); });
+  $('card-list').querySelectorAll('.card-row').forEach(r => { const x = chips[+r.dataset.chip]; if (!x.readable) r.querySelector('.s').classList.add('warn'); });
+  const n = CARDSCAN.pick.size;
+  $('card-add').disabled = !n; $('card-add').textContent = n ? 'Add ' + n + ' Color' + (n === 1 ? '' : 's') : 'Add Colors';
+  $('card-all').textContent = n === chips.length ? 'Clear' : 'Select All';
+  K.pressAll($('card-list'));
+}
+$('card-sheet').addEventListener('click', e => {
+  const b = e.target.closest('[data-chip]'); if (!b) return;
+  const i = +b.dataset.chip; CARDSCAN.pick.has(i) ? CARDSCAN.pick.delete(i) : CARDSCAN.pick.add(i);
+  renderCardPick();
+});
+$('card-all').addEventListener('click', () => {
+  const all = CARDSCAN.card.chips.length;
+  if (CARDSCAN.pick.size === all) CARDSCAN.pick.clear(); else for (let i = 0; i < all; i++) CARDSCAN.pick.add(i);
+  renderCardPick();
+});
+$('card-add').addEventListener('click', async () => {
+  const c = CARDSCAN.card; let n = 0;
+  for (const i of [...CARDSCAN.pick].sort((a, b) => a - b)) {
+    const x = c.chips[i];
+    const big = chipCanvas(x.box, 1024, 0.12), small = chipCanvas(x.box, 160, 0.12);
+    const blob = await new Promise(r => big.toBlob(r, 'image/jpeg', 0.92));
+    const nm = 'card-' + CARDSCAN.id + '-' + (i + 1) + '.jpg';
+    const file = new File([blob], nm, { type: 'image/jpeg', lastModified: Date.now() });
+    const key = fileKey(file); keepFile(key, file);
+    const fin = x.finish === 'clear' ? 'clear' : x.finish;
+    addColor({ brand: c.brand || '', line: c.product_line || '', name: x.name || '', code: x.code || '', finish: fin,
+      swatches: [{ key, name: nm, thumb: small.toDataURL('image/jpeg', 0.9), jpg: big.toDataURL('image/jpeg', 0.92).split(',')[1] }] });
+    n++;
+  }
+  cardSheet(false);
+  toast(n + ' color' + (n === 1 ? '' : 's') + ' added from the card');
+  dirty(300);
+});
+$('file-card').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const btn = $('scan-card'), lab = btn.querySelector('span'), was = lab.textContent;
+  btn.disabled = true; lab.textContent = 'Reading the card - about 20 seconds';
+  try {
+    if (CARDSCAN.url) URL.revokeObjectURL(CARDSCAN.url);
+    CARDSCAN.url = URL.createObjectURL(f);
+    CARDSCAN.img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Could not open that photo')); i.src = CARDSCAN.url; });
+    const im = CARDSCAN.img, sc = Math.min(1, 2048 / Math.max(im.naturalWidth, im.naturalHeight));
+    const cv = document.createElement('canvas'); cv.width = Math.round(im.naturalWidth * sc); cv.height = Math.round(im.naturalHeight * sc);
+    cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+    const id = 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    CARDSCAN.id = id;
+    const up = await api('img-put', { query: { id: id + 'i' }, body: { jpg: cv.toDataURL('image/jpeg', 0.88).split(',')[1] } });
+    if (up.status !== 200) throw new Error((up.json && up.json.error) || 'The photo did not upload');
+    const r = await fetch(CARDBG, { method: 'POST', headers: { 'x-studio-key': KEY, 'content-type': 'application/json' }, body: JSON.stringify({ id, imgId: id + 'i' }) });
+    if (!(r.status === 202 || r.ok)) throw new Error('The card reader would not start (' + r.status + ')');
+    const t0 = Date.now();
+    for (;;) {
+      await sleep(2500);
+      const { status, json } = await api('card', { query: { id } });
+      if (status === 200 && json && json.status === 'done') { CARDSCAN.card = json.card; break; }
+      if (status === 200 && json && json.status === 'error') throw new Error(json.error || 'The card could not be read');
+      if (Date.now() - t0 > 3 * 60000) throw new Error('Reading the card took too long - try again');
+    }
+    CARDSCAN.pick = new Set();
+    renderCardPick(); cardSheet(true);
+  } catch (er) { toast(er.message || String(er), true); }
+  finally { btn.disabled = false; lab.textContent = was; }
+});
+
 /* ── film research (step 3) ── */
 const FILM = '/.netlify/functions/studio-film-background';
 async function researchOne(c, force) {
@@ -4508,8 +4631,10 @@ async function researchOne(c, force) {
   c.sig = sig; c.research = 'working'; c.err = ''; renderFilms();
   const id = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   try {
+    let swatchId = '';
+    if (c.swatches[0] && c.swatches[0].jpg) { swatchId = id + 's'; const up = await api('img-put', { query: { id: swatchId }, body: { jpg: c.swatches[0].jpg } }); if (up.status !== 200) throw new Error((up.json && up.json.error) || 'The sample photo did not upload'); }
     const r = await fetch(FILM, { method: 'POST', headers: { 'x-studio-key': KEY, 'content-type': 'application/json' },
-      body: JSON.stringify({ id, brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, swatch: c.swatches[0] ? c.swatches[0].jpg : '' }) });
+      body: JSON.stringify({ id, brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, swatchId }) });
     if (!(r.status === 202 || r.ok)) throw new Error('The research would not start (' + r.status + ')');
     const t0 = Date.now();
     for (;;) {
@@ -4784,7 +4909,7 @@ go(1);
 window.XLStudio = {
   build: XL_STUDIO_BUILD, S, plan: () => plan(), addFiles, addMusic, exportReel, setTpl, autoEdit, applyPlan, srcBoxToOut, planFromState,
   get lastBlob() { return lastBlob; }, get T() { return T; }, get playing() { return playing; }, seekTo,
-  get proj() { return PROJ; }, setCut, setLook, mediaRect, CL, clRender, clMake, go, setKind, addColor, researchAll, jobNote, renderColors, renderFilms,
+  get proj() { return PROJ; }, CARDSCAN, setCut, setLook, mediaRect, CL, clRender, clMake, go, setKind, addColor, researchAll, jobNote, renderColors, renderFilms,
   showAll() { document.body.classList.add('st-all'); document.querySelectorAll('details.memory').forEach(d => { d.open = true; }); }, get step() { return S.step; }, projState, autosaveTick, openProject, resetStudio, idbKeys, drawFrame, pickVideoCodec, pickAudioCodec
 };
 })();

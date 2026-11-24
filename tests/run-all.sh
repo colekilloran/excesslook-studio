@@ -15,5 +15,6 @@ node tests/test-fullcontrol.cjs studio.html tests/shots > /tmp/st-full.log 2>&1;
 node tests/test-nozoom.cjs studio.html tests/shots > /tmp/st-zoom.log 2>&1; tail -1 /tmp/st-zoom.log; grep -q "RESULT PASS" /tmp/st-zoom.log || F=1
 node tests/test-learn.mjs studio.html tests/shots > /tmp/st-learn.log 2>&1; tail -1 /tmp/st-learn.log; grep -q "RESULT PASS" /tmp/st-learn.log || F=1
 node tests/test-wizard.mjs studio.html tests/shots > /tmp/st-wiz.log 2>&1; tail -1 /tmp/st-wiz.log; grep -q "RESULT PASS" /tmp/st-wiz.log || F=1
+node tests/test-colorcard.mjs studio.html tests/shots > /tmp/st-card.log 2>&1; tail -1 /tmp/st-card.log; grep -q "RESULT PASS" /tmp/st-card.log || F=1
 node tests/test-autoedit.mjs studio.html tests/shots > /tmp/st-ai.log 2>&1; tail -1 /tmp/st-ai.log; grep -q "RESULT PASS" /tmp/st-ai.log || F=1
 [ $F -eq 0 ] && echo "ALL PASS" || { echo "SOME FAILED - see /tmp/st-*.log"; exit 1; }

@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1j-2026-11-24-paltrix';
+export const CORE_BUILD = 'SC1k-2026-11-24-colorcard';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -399,6 +399,20 @@ export async function runPlan({ body, store, fetchImpl, env }) {
 export async function handleApi({ method, op, query, body, store, env }) {
   const J = (status, json) => ({ status, json });
   if (op === 'ping') return J(200, { ok: true, core: CORE_BUILD, model: env.STUDIO_MODEL || DEFAULT_MODEL, ai: !!env.ANTHROPIC_API_KEY, img: !!env.OPENAI_API_KEY });
+  /* SC1k - photos go up through this function (requests up to ~6 MB); a background function only takes a small
+     body, so it is handed the id and reads the photo from the store. */
+  if (op === 'img-put' && method === 'POST') {
+    const id = safeId(query.id), jpg = body && typeof body.jpg === 'string' ? body.jpg : '';
+    if (!id) return J(400, { error: 'bad id' });
+    if (!/^[A-Za-z0-9+/=]+$/.test(jpg.slice(0, 200)) || jpg.length < 100 || jpg.length > 4500000) return J(400, { error: 'Photo missing or too big' });
+    await store.setJSON('img/' + id, { jpg, at: new Date().toISOString() });
+    return J(200, { saved: true, id });
+  }
+  if (op === 'card' && method === 'GET') {
+    const id = safeId(query.id);
+    const c = id ? await store.get('card/' + id, { type: 'json' }) : null;
+    return c ? J(200, c) : J(404, { status: 'missing' });
+  }
   if (op === 'film' && method === 'GET') {
     const id = safeId(query.id);
     const f = id ? await store.get('film/' + id, { type: 'json' }) : null;
@@ -762,6 +776,7 @@ export async function runFilm({ body, store, fetchImpl, env }) {
   await store.setJSON(key, { status: 'working', at: new Date().toISOString() });
   try {
     if (!env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not set in Netlify');
+    if (!body.swatch && body.swatchId) { const im = await store.get('img/' + safeId(body.swatchId), { type: 'json' }); body = Object.assign({}, body, { swatch: (im && im.jpg) || '' }); }
     const req = filmRequest(body, env);
     let found = null, searches = 0;
     for (let turn = 0; turn < 6 && !found; turn++) {
@@ -780,6 +795,89 @@ export async function runFilm({ body, store, fetchImpl, env }) {
     const spec = validateFilm(found);
     await store.setJSON(key, { status: 'done', spec, searches, at: new Date().toISOString(), core: CORE_BUILD });
     return { ok: true, spec };
+  } catch (e) {
+    await store.setJSON(key, { status: 'error', error: clean(e && e.message || e, 300) });
+    return { ok: false, error: String(e && e.message || e) };
+  }
+}
+/* ══ SC1k - COLOR CARDS ═══════════════════════════════════════════════════
+   Cole: "i only have sample color cards for the brands of all the colors". A photo of a maker's sample card
+   (one chip or a whole fan / swatch book page) is read by Claude's vision: every chip, the brand / line / name /
+   code printed by it, its finish, and where it sits in the photo, so the page can cut each chip out as that
+   color's sample photo. */
+export const CARD_TOOL = {
+  name: 'submit_card',
+  description: 'Return every color chip on the sample card photo.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      brand: { type: 'string', description: 'The maker printed on the card, if any (XPEL, 3M, Avery Dennison, Paltrix, STEK, Inozetek ...)' },
+      product_line: { type: 'string', description: 'The line printed on the card, if any (2080, SW900, Color PPF, Super Gloss ...)' },
+      chips: {
+        type: 'array', maxItems: 60,
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'The color name printed by the chip, exactly as printed' },
+            code: { type: 'string', description: 'The code printed by the chip, exactly as printed (e.g. S261, P701G). Empty if none.' },
+            finish: { type: 'string', enum: ['', 'gloss', 'satin', 'matte', 'metallic', 'color shift', 'chrome', 'clear'], description: 'From the printed text first, else from how the chip looks. Empty if unsure.' },
+            box: { type: 'object', description: 'Where the COLORED area of the chip is in the photo, as fractions of the photo width / height (0-1), left x, top y, width w, height h. Only the color, not the label.',
+              properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } }, required: ['x', 'y', 'w', 'h'] },
+            readable: { type: 'boolean', description: 'False when the printed name or code could not be read clearly' }
+          },
+          required: ['name', 'box']
+        }
+      },
+      note: { type: 'string', description: 'Anything the owner should check (glare on a chip, a label cut off, a chip with no label)' }
+    },
+    required: ['chips']
+  }
+};
+const CARD_BRIEF = 'You read photos of wrap and paint protection film sample cards for Excess Look Auto Solutions, a detailing and PPF shop. '
+  + 'Find every color chip on the card. For each one, copy the name and code printed next to it exactly as printed - never guess a code that is not printed. '
+  + 'Give the box of the colored area itself (not the label, not the card border) as fractions of the photo. Read the brand and product line from the card. '
+  + 'Then call submit_card once.';
+export function validateCard(c) {
+  c = c && typeof c === 'object' ? c : {};
+  const fin = CARD_TOOL.input_schema.properties.chips.items.properties.finish.enum;
+  const n = v => Math.min(1, Math.max(0, Number(v) || 0));
+  const chips = (Array.isArray(c.chips) ? c.chips : []).slice(0, 60).map(x => {
+    const b = x && x.box || {};
+    let bx = { x: n(b.x), y: n(b.y), w: n(b.w), h: n(b.h) };
+    bx.w = Math.min(bx.w, 1 - bx.x); bx.h = Math.min(bx.h, 1 - bx.y);
+    return { name: clean(x && x.name, 60), code: clean(x && x.code, 40), finish: fin.includes(x && x.finish) ? x.finish : '', box: bx, readable: !(x && x.readable === false) };
+  }).filter(x => (x.name || x.code) && x.box.w > 0.005 && x.box.h > 0.005);
+  return { brand: clean(c.brand, 40), product_line: clean(c.product_line, 60), chips, note: clean(c.note, 300) };
+}
+export async function runCard({ body, store, fetchImpl, env }) {
+  const id = safeId(body && body.id);
+  if (!id) return { ok: false, error: 'bad id' };
+  const key = 'card/' + id;
+  await store.setJSON(key, { status: 'working', at: new Date().toISOString() });
+  try {
+    if (!env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not set in Netlify');
+    let jpg = String(body.jpg || '');
+    if (!jpg && body.imgId) { const im = await store.get('img/' + safeId(body.imgId), { type: 'json' }); jpg = (im && im.jpg) || ''; }
+    if (!/^[A-Za-z0-9+/=]+$/.test(jpg.slice(0, 200)) || jpg.length < 100) throw new Error('The card photo did not arrive - try again');
+    const req = { model: env.STUDIO_MODEL || DEFAULT_MODEL, max_tokens: 8000, system: CARD_BRIEF, tools: [CARD_TOOL], tool_choice: { type: 'auto' },
+      messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: jpg } },
+        { type: 'text', text: 'Read every chip on this sample card.' + (body.hint ? ' The owner says: ' + clean(body.hint, 200) : '') }] }] };
+    let found = null;
+    for (let turn = 0; turn < 2 && !found; turn++) {
+      const res = await fetchImpl(API_URL, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify(req) });
+      const txt = await res.text(); let d = null; try { d = JSON.parse(txt); } catch (e) {}
+      if (!res.ok) throw new Error('Claude API ' + res.status + ': ' + ((d && d.error && d.error.message) || txt.slice(0, 200)));
+      const use = ((d && d.content) || []).find(b => b.type === 'tool_use' && b.name === 'submit_card');
+      if (use) { found = use.input; break; }
+      req.messages = req.messages.concat({ role: 'assistant', content: (d && d.content && d.content.length) ? d.content : [{ type: 'text', text: '(no reply)' }] },
+        { role: 'user', content: [{ type: 'text', text: 'Call submit_card now.' }] });
+    }
+    if (!found) throw new Error('The card could not be read - try a straighter, closer photo');
+    const card = validateCard(found);
+    if (!card.chips.length) throw new Error('No color chips found on that photo - fill the frame with the card, straight on');
+    await store.setJSON(key, { status: 'done', card, at: new Date().toISOString() });
+    if (body.imgId) await store.delete('img/' + safeId(body.imgId));
+    return { ok: true, card };
   } catch (e) {
     await store.setJSON(key, { status: 'error', error: clean(e && e.message || e, 300) });
     return { ok: false, error: String(e && e.message || e) };
