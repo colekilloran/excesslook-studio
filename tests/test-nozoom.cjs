@@ -25,7 +25,7 @@ const small = p => p.evaluate(() => [...document.querySelectorAll('input:not([ty
     await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '' }));
     await page.route('https://static.wixstatic.com/**', r => r.fulfill({ contentType: 'image/png', body: fs.readFileSync(path.join(__dirname, '..', 'vendor', 'logo.png')) }));
     await page.goto('file://' + FILE);
-    await page.waitForFunction(() => window.XLStudio);
+    await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
     await page.setInputFiles('#file-clips', [path.join(FIX, 'clipB-portrait.mp4')]);
     await page.waitForFunction(() => document.querySelectorAll('.clip').length === 1, null, { timeout: 30000 });
     await page.evaluate(() => { document.querySelector('.clip [data-a="more"]').click(); document.getElementById('review').classList.add('on'); });

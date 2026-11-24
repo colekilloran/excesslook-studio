@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1h-2026-11-23-swatch';
+export const CORE_BUILD = 'SC1i-2026-11-24-filmmatch';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -193,7 +193,7 @@ export function buildRequest({ footage, style, prev, want, model }) {
     if (want.length && Number(want.length) > 3) w.push('Aim for about ' + Math.round(Number(want.length)) + ' seconds.');
     if (want.title) w.push('Headline: ' + clean(want.title, 40));
     if (want.service) w.push('Service: ' + clean(want.service, 48));
-    if (want.note) w.push('Note: ' + clean(want.note, 600));
+    if (want.note) w.push('Note: ' + clean(want.note, 2000));
     if (w.length) task += 'For this reel the owner asked:\n' + w.join('\n') + '\n\n';
   }
   task += 'Now cut the reel and call submit_edit.';
@@ -399,6 +399,11 @@ export async function runPlan({ body, store, fetchImpl, env }) {
 export async function handleApi({ method, op, query, body, store, env }) {
   const J = (status, json) => ({ status, json });
   if (op === 'ping') return J(200, { ok: true, core: CORE_BUILD, model: env.STUDIO_MODEL || DEFAULT_MODEL, ai: !!env.ANTHROPIC_API_KEY, img: !!env.OPENAI_API_KEY });
+  if (op === 'film' && method === 'GET') {
+    const id = safeId(query.id);
+    const f = id ? await store.get('film/' + id, { type: 'json' }) : null;
+    return f ? J(200, f) : J(404, { status: 'missing' });
+  }
   /* SC1g color lineup: the car photo goes up once, renders come back one by one */
   if (op === 'cl-src' && method === 'POST') {
     const job = safeId(query.job), i = Number(query.i);
@@ -590,18 +595,52 @@ export function finishOf(color) {
   if (/metallic|pearl|flake/.test(c)) return 'gloss metallic finish with fine metal flake';
   return 'high gloss finish with crisp reflections, like fresh paint';
 }
-export function recolorPrompt(color, swatch) {
+export function recolorPrompt(color, swatch, spec, light) {
   const col = clean(color, 80);
+  if (spec && (spec.clear || /^clear\b/i.test(String(spec.color_name || '')))) {
+    // clear film keeps the car's own paint: only the sheen changes
+    return 'Edit the first image, a photo of a car: the car now has ' + filmText(spec) + ' over its own paint. Keep the paint color exactly as it is; change only the surface sheen to match the film'
+      + (spec.finish ? ' (' + spec.finish + ')' : '') + '. Keep everything else exactly the same: the same car, the same angle and framing, wheels, tires, glass, lights, badges, trim, license plate and background. '
+      + (light && LIGHTS[light] ? LIGHTS[light] + ' ' : 'Keep the lighting and reflections the same. ') + 'Photorealistic. No text, no watermark.';
+  }
   /* SC1h - Cole photographed the film itself: "its not actually making the car the new color. it just makes a
      slide show of the car and then the ppf color i took a picture of". A swatch photo rides along as the second
      image and the edit matches it exactly. */
+  const specTxt = spec ? ' Film details (researched - match them exactly): ' + filmText(spec) + '.' : '';
   const what = swatch
     ? 'the exact color, finish and sheen of the wrap or paint protection film shown in the second image (a photo of a sample of the film' + (col ? ', called ' + col : '') + ') - match its hue, brightness, gloss or satin or matte level and any metallic flake or texture; ignore everything else in the second image'
-    : col + ' as a professional vinyl wrap, ' + finishOf(col);
-  return 'Edit the first image, a photo of a car: change the color of the car\'s painted body panels to ' + what + '. Wrap every painted panel evenly - hood, roof, doors, fenders, bumpers, mirrors and pillars that are body color. '
+    : col + ' as a professional ' + (spec && /ppf|protection/i.test(spec.film_type || '') ? 'color paint protection film' : 'vinyl wrap') + ', ' + (spec && spec.finish ? spec.finish + ' finish' : finishOf(col));
+  return 'Edit the first image, a photo of a car: change the color of the car\'s painted body panels to ' + what + '.' + specTxt + ' Wrap every painted panel evenly - hood, roof, doors, fenders, bumpers, mirrors and pillars that are body color. '
     + 'Keep everything else exactly the same: the same car, the same angle and framing, wheels, tires, brake calipers, glass and window tint, '
-    + 'headlights, taillights, badges and emblems, grille, chrome and black trim, license plate, background, ground, lighting and shadows. '
+    + 'headlights, taillights, badges and emblems, grille, chrome and black trim, license plate, background' + (light && LIGHTS[light] ? ' and ground. ' + LIGHTS[light] + ' ' : ', ground, lighting and shadows. ')
     + 'Photorealistic, like a real photo of the wrapped car. No text, no watermark, no added objects.';
+}
+/* SC1i - Cole: "The ppf colors are crucial that they are an exact match which may require knowing the brand of ppf
+   and researching the exact color code i provide along with understanding the flake color, texture (gloss, satin,
+   metallic, color shift, etc...) and matching it exactly showing how lighting changes the color." A researched film
+   spec (runFilm) drives the render, and each render can be lit a set way. */
+export const LIGHTS = {
+  sun: 'Relight the scene as bright direct midday sun: crisp hard reflections and highlights on the film, deep shadows; show how this film looks in full sun (metallic flake sparkles, color shift at its strongest).',
+  shade: 'Relight the scene as open shade on a bright day: soft even light, no hard highlights; show the film\'s true base color.',
+  overcast: 'Relight the scene as an overcast day: flat soft grey light, low contrast; show how the film reads on a cloudy day.',
+  golden: 'Relight the scene as golden hour, low warm sun from the side: long warm highlights along the body lines.',
+  night: 'Relight the scene as night under street and shop lights: dark surroundings, pools of light and specular streaks on the panels.',
+  studio: 'Relight the scene as a detailing studio: long overhead LED light bars reflected as clean lines along the panels.'
+};
+export const LIGHT_NAMES = { sun: 'In the sun', shade: 'In the shade', overcast: 'Overcast', golden: 'Golden hour', night: 'At night', studio: 'Studio lights' };
+export function filmText(sp) {
+  if (!sp) return '';
+  const bits = [];
+  const name = [sp.brand, sp.product_line, sp.color_name].filter(Boolean).join(' ');
+  if (name) bits.push(name + (sp.code ? ' (code ' + sp.code + ')' : ''));
+  if (sp.film_type) bits.push(sp.film_type);
+  if (sp.finish) bits.push(sp.finish + ' finish');
+  if (sp.base_color) bits.push('base color: ' + sp.base_color);
+  if (sp.hex && (sp.hex.mid || sp.hex.highlight)) bits.push('approximate tones - highlight ' + (sp.hex.highlight || '?') + ', mid ' + (sp.hex.mid || '?') + ', shadow ' + (sp.hex.shadow || '?'));
+  if (sp.flake && sp.flake.present) bits.push('flake: ' + [sp.flake.color, sp.flake.size].filter(Boolean).join(', '));
+  if (sp.shift && sp.shift.colors) bits.push('color shift: ' + sp.shift.colors);
+  if (sp.render_notes) bits.push(sp.render_notes);
+  return clean(bits.join('; '), 900);
 }
 export function renderSize(w, h) {
   if (!w || !h) return '1536x1024';
@@ -618,7 +657,7 @@ async function recolorOne({ job, r, store, fetchImpl, env }) {
     fd.append('model', env.OPENAI_IMAGE_MODEL || IMAGE_MODEL);
     const ref = r.ref >= 0 ? await store.get(clKey(job, 'src', r.ref), { type: 'json' }) : null;
     if (r.ref >= 0 && !(ref && ref.jpg)) throw new Error('The swatch photo did not arrive - try again');
-    fd.append('prompt', recolorPrompt(r.color, !!ref) + (r.extra ? ' ' + clean(r.extra, 300) : ''));
+    fd.append('prompt', recolorPrompt(r.color, !!ref, r.spec, r.light) + (r.extra ? ' ' + clean(r.extra, 300) : ''));
     const blob = b64 => new Blob([Buffer.from(b64, 'base64')], { type: 'image/jpeg' });
     if (ref) { fd.append('image[]', blob(src.jpg), 'car.jpg'); fd.append('image[]', blob(ref.jpg), 'swatch.jpg'); }
     else fd.append('image', blob(src.jpg), 'car.jpg');
@@ -641,7 +680,8 @@ async function recolorOne({ job, r, store, fetchImpl, env }) {
 export async function runRecolor({ body, store, fetchImpl, env }) {
   const job = safeId(body && body.job);
   const list = (Array.isArray(body && body.renders) ? body.renders : []).slice(0, 120)
-    .map(r => ({ k: Math.round(Number(r.k)), src: Math.round(Number(r.src)), ref: r.ref == null ? -1 : Math.round(Number(r.ref)), color: clean(r.color, 80), extra: clean(r.extra, 300) }))
+    .map(r => ({ k: Math.round(Number(r.k)), src: Math.round(Number(r.src)), ref: r.ref == null ? -1 : Math.round(Number(r.ref)), color: clean(r.color, 80), extra: clean(r.extra, 300),
+      spec: r.spec && typeof r.spec === 'object' ? validateFilm(r.spec) : null, light: LIGHTS[r.light] ? r.light : '' }))
     .filter(r => r.k >= 0 && r.k < 400 && r.src >= 0 && r.src < 12 && r.ref < 12 && (r.color || r.ref >= 0));
   if (!job || !list.length) return { ok: false, error: 'nothing to render' };
   if (!env.OPENAI_API_KEY) {
@@ -652,6 +692,97 @@ export async function runRecolor({ body, store, fetchImpl, env }) {
   const lane = async () => { while (next < list.length) { const r = list[next++]; await recolorOne({ job, r, store, fetchImpl, env }); } };
   await Promise.all([lane(), lane(), lane()]);
   return { ok: true, n: list.length };
+}
+/* ══ SC1i - FILM RESEARCH ═════════════════════════════════════════════════
+   The owner gives brand / line / color name / code and maybe a photo of the sample. Claude searches the web
+   (web_search server tool) for the manufacturer's data and returns a structured spec through submit_film. */
+export const FILM_TOOL = {
+  name: 'submit_film',
+  description: 'Return the researched spec of the wrap / PPF film.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      brand: { type: 'string' }, product_line: { type: 'string' }, color_name: { type: 'string' }, code: { type: 'string', description: 'Manufacturer color / product code, e.g. 2080-S12 or SW900-190-O' },
+      film_type: { type: 'string', enum: ['color PPF', 'clear PPF', 'vinyl wrap', 'paint'] },
+      clear: { type: 'boolean', description: 'True when the film is clear (the car keeps its own paint color, only the sheen changes - e.g. XPEL Stealth, clear satin PPF)' },
+      finish: { type: 'string', enum: ['gloss', 'satin', 'matte', 'metallic gloss', 'metallic satin', 'pearl', 'color shift', 'chrome', 'brushed', 'carbon', 'textured'] },
+      base_color: { type: 'string', description: 'Plain words for the color as the eye sees it in shade, e.g. "deep blue-grey with a cool cast"' },
+      hex: { type: 'object', description: 'Best estimate sRGB hex for the film on a car body', properties: { highlight: { type: 'string' }, mid: { type: 'string' }, shadow: { type: 'string' } } },
+      flake: { type: 'object', properties: { present: { type: 'boolean' }, color: { type: 'string' }, size: { type: 'string', description: 'fine / medium / coarse' } } },
+      shift: { type: 'object', description: 'Color-shift films only', properties: { colors: { type: 'string', description: 'e.g. "purple to teal to gold depending on angle"' } } },
+      lighting: { type: 'object', description: 'How it reads in each light', properties: { sun: { type: 'string' }, shade: { type: 'string' }, overcast: { type: 'string' }, night: { type: 'string' } } },
+      render_notes: { type: 'string', description: 'One short paragraph telling an image editor exactly how to paint this film on a car so it matches the real product' },
+      confidence: { type: 'string', enum: ['exact', 'close', 'estimate'], description: 'exact = manufacturer data found for this code; close = similar product data; estimate = from the photo / name only' },
+      sources: { type: 'array', maxItems: 6, items: { type: 'object', properties: { title: { type: 'string' }, url: { type: 'string' } } } },
+      note: { type: 'string', description: 'Anything the owner should check (e.g. code not found, two products share the name)' }
+    },
+    required: ['color_name', 'finish', 'base_color', 'render_notes', 'confidence']
+  }
+};
+const FILM_BRIEF = 'You research automotive wrap and paint protection films for Excess Look Auto Solutions, a detailing and PPF shop. '
+  + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com and so on), then installer galleries and reviews for how it really looks on cars. '
+  + 'Work out the finish, the base color, any metallic flake (its color and size), any color shift and the angles, and how it reads in sun, shade, overcast and at night. '
+  + 'If the owner attached a photo of the sample, use it to confirm and fine-tune the color, but trust the manufacturer\'s data over a photo taken under shop lights. '
+  + 'Clear films (like XPEL Stealth or any clear satin / gloss PPF) do not change the paint color - say so with clear = true. '
+  + 'Never invent a code. If you cannot find the product, say so in note and set confidence to estimate. Then call submit_film once.';
+const HEX = /^#?[0-9a-f]{6}$/i;
+export function validateFilm(sp) {
+  sp = sp && typeof sp === 'object' ? sp : {};
+  const hx = v => (HEX.test(String(v || '')) ? '#' + String(v).replace('#', '').toUpperCase() : '');
+  const ft = ['color PPF', 'clear PPF', 'vinyl wrap', 'paint'], fin = FILM_TOOL.input_schema.properties.finish.enum;
+  return {
+    brand: clean(sp.brand, 40), product_line: clean(sp.product_line, 60), color_name: clean(sp.color_name, 60), code: clean(sp.code, 40),
+    film_type: ft.includes(sp.film_type) ? sp.film_type : '', clear: sp.clear === true || sp.film_type === 'clear PPF',
+    finish: fin.includes(sp.finish) ? sp.finish : '', base_color: clean(sp.base_color, 160),
+    hex: { highlight: hx(sp.hex && sp.hex.highlight), mid: hx(sp.hex && sp.hex.mid), shadow: hx(sp.hex && sp.hex.shadow) },
+    flake: { present: !!(sp.flake && sp.flake.present), color: clean(sp.flake && sp.flake.color, 60), size: clean(sp.flake && sp.flake.size, 20) },
+    shift: { colors: clean(sp.shift && sp.shift.colors, 120) },
+    lighting: ['sun', 'shade', 'overcast', 'night'].reduce((o, k) => { o[k] = clean(sp.lighting && sp.lighting[k], 200); return o; }, {}),
+    render_notes: clean(sp.render_notes, 600),
+    confidence: ['exact', 'close', 'estimate'].includes(sp.confidence) ? sp.confidence : 'estimate',
+    sources: (Array.isArray(sp.sources) ? sp.sources : []).slice(0, 6).map(x => ({ title: clean(x && x.title, 120), url: /^https?:\/\//.test(String(x && x.url || '')) ? clean(x.url, 400) : '' })).filter(x => x.url),
+    note: clean(sp.note, 300)
+  };
+}
+export function filmRequest(body, env) {
+  const ask = ['Brand: ' + clean(body.brand, 40), 'Product line: ' + clean(body.line, 60), 'Color name: ' + clean(body.name, 60), 'Color code: ' + clean(body.code, 40),
+    'Owner says the finish is: ' + (clean(body.finish, 30) || 'not sure'), body.notes ? 'Owner notes: ' + clean(body.notes, 300) : ''].filter(Boolean).join('\n');
+  const content = [];
+  if (body.swatch && /^[A-Za-z0-9+/=]+$/.test(String(body.swatch).slice(0, 200))) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: body.swatch } }, { type: 'text', text: 'Above: the owner\'s photo of the sample.' });
+  content.push({ type: 'text', text: 'Research this film so a render can match it exactly:\n' + ask });
+  return { model: env.STUDIO_MODEL || DEFAULT_MODEL, max_tokens: 8000, system: FILM_BRIEF,
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6 }, FILM_TOOL], tool_choice: { type: 'auto' },
+    messages: [{ role: 'user', content }] };
+}
+export async function runFilm({ body, store, fetchImpl, env }) {
+  const id = safeId(body && body.id);
+  if (!id) return { ok: false, error: 'bad id' };
+  const key = 'film/' + id;
+  await store.setJSON(key, { status: 'working', at: new Date().toISOString() });
+  try {
+    if (!env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not set in Netlify');
+    const req = filmRequest(body, env);
+    let found = null, searches = 0;
+    for (let turn = 0; turn < 6 && !found; turn++) {
+      const res = await fetchImpl(API_URL, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify(req) });
+      const txt = await res.text(); let d = null; try { d = JSON.parse(txt); } catch (e) {}
+      if (!res.ok) throw new Error('Claude API ' + res.status + ': ' + ((d && d.error && d.error.message) || txt.slice(0, 200)));
+      const blocks = (d && d.content) || [];
+      searches += blocks.filter(b => b.type === 'server_tool_use').length;
+      const use = blocks.find(b => b.type === 'tool_use' && b.name === 'submit_film');
+      if (use) { found = use.input; break; }
+      // pause_turn: hand the paused turn back unchanged; end_turn without the tool: ask for it
+      req.messages = req.messages.concat({ role: 'assistant', content: blocks.length ? blocks : [{ type: 'text', text: '(no reply)' }] });
+      if (d.stop_reason !== 'pause_turn') req.messages.push({ role: 'user', content: [{ type: 'text', text: 'Call submit_film now with what you found.' }] });
+    }
+    if (!found) throw new Error('The research did not finish - try again');
+    const spec = validateFilm(found);
+    await store.setJSON(key, { status: 'done', spec, searches, at: new Date().toISOString(), core: CORE_BUILD });
+    return { ok: true, spec };
+  } catch (e) {
+    await store.setJSON(key, { status: 'error', error: clean(e && e.message || e, 300) });
+    return { ok: false, error: String(e && e.message || e) };
+  }
 }
 const PROJ_INDEX = 'projects', PROJ_MAX = 400000, PROJ_KEEP = 300;
 const projKey = id => 'proj/' + safeId(id);

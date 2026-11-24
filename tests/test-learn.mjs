@@ -65,7 +65,7 @@ try {
   const page = await ctx.newPage();
   page.on('pageerror', e => errors.push(String(e)));
   await page.goto(BASE);
-  await page.waitForFunction(() => window.XLStudio);
+  await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   check(1, /^ST1[h-z]-/.test(await page.evaluate(() => window.XL_STUDIO_BUILD)), 'build marker');
   await page.waitForFunction(() => /Nothing yet/.test(document.getElementById('learned').innerText), null, { timeout: 8000 });
   check(2, true, 'What It Has Learned shows the empty state');
@@ -108,7 +108,7 @@ try {
   check(10, JSON.parse(store.m.get('style')).lessons.length === 0, 'a lesson can be forgotten');
   // phone
   const ph = await ctx.newPage(); await ph.setViewportSize({ width: 390, height: 844 });
-  await ph.goto(BASE); await ph.waitForFunction(() => window.XLStudio);
+  await ph.goto(BASE); await ph.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   await ph.evaluate(() => document.getElementById('learned').scrollIntoView({ block: 'center' }));
   await ph.screenshot({ path: path.join(SHOTS, 'learn-phone.png') });
   check(11, errors.length === 0, 'no page errors ' + JSON.stringify(errors.slice(0, 2)));

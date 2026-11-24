@@ -21,7 +21,7 @@ const check = (n, ok, msg) => { if (ok) { pass++; console.log('ok   ' + n + ' ' 
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '' }));
   await page.route('https://static.wixstatic.com/**', r => r.fulfill({ contentType: 'image/png', body: fs.readFileSync(path.join(__dirname, '..', 'vendor', 'logo.png')) }));
   await page.goto('file://' + FILE);
-  await page.waitForFunction(() => window.XLStudio);
+  await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   const B = path.join(FIX, 'clipB-portrait.mp4');
   await page.setInputFiles('#file-clips', [B]);
   await page.waitForFunction(() => document.querySelectorAll('.clip').length === 1, null, { timeout: 30000 });
@@ -62,7 +62,7 @@ const check = (n, ok, msg) => { if (ok) { pass++; console.log('ok   ' + n + ' ' 
   await ph.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '' }));
   await ph.route('https://static.wixstatic.com/**', r => r.fulfill({ contentType: 'image/png', body: fs.readFileSync(path.join(__dirname, '..', 'vendor', 'logo.png')) }));
   await ph.goto('file://' + FILE);
-  await ph.waitForFunction(() => window.XLStudio);
+  await ph.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   await ph.evaluate(() => document.getElementById('cut-seg').scrollIntoView({ block: 'center' }));
   const over = await ph.evaluate(() => { const r = document.getElementById('cut-seg').getBoundingClientRect(); return r.right <= document.documentElement.clientWidth + 1; });
   await ph.screenshot({ path: path.join(SHOTS, 'cuts-phone.png') });

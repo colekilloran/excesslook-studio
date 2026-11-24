@@ -83,7 +83,7 @@ async function open(vp, mobile) {
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: "@font-face{font-family:'Bebas Neue';src:url(" + BASE + "fonts/bebas.ttf) format('truetype')}" }));
   await page.route('https://static.wixstatic.com/**', r => r.fulfill({ contentType: 'image/png', body: fs.readFileSync(path.join(here, '..', 'vendor', 'logo.png')) }));
   await page.goto(BASE);
-  await page.waitForFunction(() => window.XLStudio);
+  await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   return page;
 }
 try {
@@ -194,7 +194,7 @@ try {
 
   // 24 passcode remembered: a new page does not ask again
   const p2 = await page.context().newPage();
-  await p2.goto(BASE); await p2.waitForFunction(() => window.XLStudio);
+  await p2.goto(BASE); await p2.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   await p2.waitForTimeout(600);
   check(24, (await p2.inputValue('#rules')).includes('Keep reels under 20 seconds'), 'passcode remembered on this device, rules load on open');
 

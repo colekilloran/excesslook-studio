@@ -38,7 +38,7 @@ async function route(page) {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   await route(page);
   await page.goto('file://' + FILE);
-  await page.waitForFunction(() => window.XLStudio);
+  await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
 
   // 1 marker
   const build = await page.evaluate(() => window.XL_STUDIO_BUILD);
@@ -191,7 +191,7 @@ async function route(page) {
   ph.on('pageerror', e => errors.push(String(e)));
   await route(ph);
   await ph.goto('file://' + FILE);
-  await ph.waitForFunction(() => window.XLStudio);
+  await ph.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   await ph.setInputFiles('#file-clips', [path.join(FIX, 'clipB-portrait.mp4'), path.join(FIX, 'clipA-landscape.mp4')]);
   await ph.waitForFunction(() => document.querySelectorAll('.clip').length === 2, null, { timeout: 30000 });
   await ph.fill('#f-title', 'Model Y');

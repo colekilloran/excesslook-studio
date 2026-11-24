@@ -39,7 +39,7 @@ const check = (n, ok, msg) => { if (ok) { pass++; console.log('ok   ' + n + ' ' 
     };
   });
   await page.goto('file://' + FILE);
-  await page.waitForFunction(() => window.XLStudio);
+  await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   const build = await page.evaluate(() => window.XL_STUDIO_BUILD);
   check(1, /^ST1[c-z]-/.test(build), 'build marker ' + build);
 

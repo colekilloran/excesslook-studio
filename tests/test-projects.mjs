@@ -60,7 +60,7 @@ async function open(ctx) {
   const page = await ctx.newPage();
   page.on('pageerror', e => errors.push(String(e)));
   await page.goto(BASE);
-  await page.waitForFunction(() => window.XLStudio);
+  await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   return page;
 }
 const projs = () => [...store.m.keys()].filter(k => k.startsWith('proj/'));

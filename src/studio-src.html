@@ -10,7 +10,7 @@
 /*@KITCSS*/
 </style>
 <style>
-/* ══ REEL STUDIO - ST1j ══════════════════════════════════════════════════════
+/* ══ REEL STUDIO - ST1k ══════════════════════════════════════════════════════
    Raw footage in, finished reel out. An AI editor plans the cut from stills,
    this page renders it. Everything runs on the device: clips are read from
    the files you pick, the reel is drawn on a canvas and encoded by the
@@ -221,6 +221,76 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
 @media (pointer:coarse),(max-width:900px){
   input,textarea,select,.xl-input,.xl-textarea,.xl-f input,.xl-f textarea,.xl-f select,.clip-opts .xl-f input{font-size:16px!important}
 }
+/* ST1k wizard - Cole: "the studio needs to be super user friendly. I choose the type of video, then provide the
+   initial video and optional ppf/vinyl colors in a secondary slot along with a description, then i am shown the
+   other advanced settings i can adjust and then i get the final video which i can make changes to." */
+[data-step]{display:none}
+body.st-1 [data-step="1"],body.st-2 [data-step="2"],body.st-3 [data-step="3"],body.st-4 [data-step="4"]{display:block}
+body.st-1 .studio{display:none}
+/* every step at once - only the test kit uses this (XLStudio.showAll) */
+body.st-all [data-step],body.st-all [data-kind]{display:block}
+body.st-all .studio{display:grid}
+body.st-all .pv-col{display:block}
+body.st-2 .pv-col{display:none}
+body.st-2 .studio{grid-template-columns:minmax(0,1fr)}
+body.st-2 .ctl{max-width:760px}
+[data-kind]{display:none}
+body.k-edit [data-kind="edit"],body.k-color [data-kind="color"]{display:block}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 20px;padding:5px;border-radius:16px;background:#121217;border:1px solid var(--hair)}
+.steps button{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 4px;border:0;border-radius:12px;background:none;color:var(--dim);font:700 12px/1 Montserrat,sans-serif;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;transition:background .2s,color .2s}
+.steps b{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;background:rgba(255,255,255,.08);color:var(--muted);flex:none}
+.steps button.done{color:var(--muted)}
+.steps button.done b{background:rgba(200,169,81,.22);color:var(--gold)}
+.steps button.on{background:var(--gold-soft);color:var(--gold)}
+.steps button.on b{background:var(--gold);color:#0A0A0A}
+.steps button:disabled{opacity:.4;cursor:default}
+.kinds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.kind{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:18px 16px;border-radius:18px;background:#14141A;border:1px solid var(--hair);color:var(--white);font-family:Montserrat,sans-serif;text-align:left;cursor:pointer;min-height:150px}
+.kind svg{width:30px;height:30px;fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.kind .t{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1.2px;line-height:1}
+.kind .s{font-size:12.5px;color:var(--muted);line-height:1.4}
+.kind.on{border-color:rgba(200,169,81,.6);background:linear-gradient(180deg,rgba(200,169,81,.10),#14141A)}
+.step-nav{display:flex;justify-content:space-between;gap:10px;margin:26px 0 10px}
+.step-nav .xl-btn{min-width:130px}
+.xl-h2 .opt{font-family:Montserrat,sans-serif;font-size:10px;letter-spacing:1px;color:var(--dim);font-weight:700}
+.colr{border-radius:16px;background:#121217;border:1px solid var(--hair);padding:14px;margin-bottom:10px}
+.colr-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.colr-top .t{flex:1;min-width:0;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.colr-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.colr-grid .xl-f{margin:0}
+.colr-sw{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.colr-sw img{width:48px;height:48px;border-radius:10px;object-fit:cover;border:2px solid #5BC0EB}
+.colr-sw .xl-add{margin-left:0}
+.colr .more-chips{margin-top:10px}
+.film{border-radius:16px;background:#121217;border:1px solid var(--hair);padding:14px;margin-bottom:10px}
+.film-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.film-h .t{flex:1;min-width:0;font-weight:700;font-size:14.5px}
+.conf{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;border-radius:999px;flex:none}
+.conf.exact{background:rgba(48,209,88,.15);color:#30D158}.conf.close{background:rgba(200,169,81,.18);color:var(--gold)}.conf.estimate{background:rgba(229,72,77,.15);color:#E5484D}
+.film-sw{display:flex;gap:6px;margin:6px 0 10px}
+.film-sw i{width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.15);display:block}
+.film-l{display:grid;grid-template-columns:110px minmax(0,1fr);gap:4px 12px;font-size:13px;line-height:1.4}
+.film-l dt{color:var(--dim);font-weight:700;font-size:11px;letter-spacing:.6px;text-transform:uppercase;padding-top:2px}
+.film-l dd{margin:0;color:var(--white)}
+.film-src{margin-top:8px;font-size:12px;line-height:1.5}
+.film-src a{color:var(--gold);text-decoration:none;margin-right:10px;display:inline-block}
+.film-note{margin-top:8px;font-size:12.5px;color:var(--gold)}
+.film-wait{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.film-wait .shim{flex:1}
+details.memory{margin-top:22px;border-radius:16px;background:#101014;border:1px solid var(--hair);padding:4px 14px 14px}
+details.memory summary{list-style:none;cursor:pointer;padding:12px 0 4px;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;color:var(--gold);display:flex;align-items:baseline;gap:10px}
+details.memory summary span{color:var(--white)}
+details.memory summary em{font-style:normal;font-family:Montserrat,sans-serif;font-size:11.5px;letter-spacing:0;color:var(--dim)}
+details.memory summary::-webkit-details-marker{display:none}
+@media(max-width:900px){.kinds{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){
+  .kind{min-height:0;padding:14px}
+  .colr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps button{padding:8px 2px;gap:5px;font-size:9.5px;letter-spacing:.3px}
+  .steps b{width:18px;height:18px;font-size:10px}
+  .film-l{grid-template-columns:86px minmax(0,1fr)}
+  .step-nav .xl-btn{min-width:0;flex:1}
+}
 /* ST1e saved projects: the bar under the title, the list sheet, the re-add card */
 .proj-bar{display:flex;align-items:center;gap:10px;padding:11px 12px 11px 16px;border-radius:16px;background:#121217;border:1px solid var(--hair);margin:0 0 24px;position:relative;overflow:hidden}
 .proj-name{flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;padding:0;color:var(--white);font-family:Montserrat,sans-serif;cursor:pointer}
@@ -302,7 +372,7 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
 <div id="scroller">
 <div class="wrap">
   <div class="nav-large" id="large-title">REEL <span style="color:var(--gold)">STUDIO</span></div>
-  <div class="lede">Drop in the raw footage from a job and tap Make My Reel. The editor picks the moments and cuts an Instagram and TikTok ready MP4. Your video stays on this device - only small stills go to the editor.</div>
+  <div class="lede">Pick the kind of reel, add the footage and any PPF or vinyl colors, check the settings, and the studio cuts an Instagram and TikTok ready MP4 you can still change. Your video stays on this device.</div>
 
   <div class="proj-bar" id="proj-bar">
     <button class="proj-name" id="proj-name" type="button" aria-label="Rename this reel">
@@ -312,6 +382,19 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
     <button class="xl-add press" id="btn-new" type="button">New</button>
     <button class="xl-add press" id="btn-projects" type="button">Projects</button>
     <div class="shim"><i id="proj-shim" style="width:100%"></i></div>
+  </div>
+
+  <nav class="steps" id="steps" aria-label="Steps">
+    <button type="button" data-go="1"><b>1</b><span>Type</span></button>
+    <button type="button" data-go="2"><b>2</b><span>Footage</span></button>
+    <button type="button" data-go="3"><b>3</b><span>Settings</span></button>
+    <button type="button" data-go="4"><b>4</b><span>Reel</span></button>
+  </nav>
+
+  <!-- ── STEP 1: TYPE ── -->
+  <div data-step="1">
+    <div class="xl-h2">WHAT ARE YOU <span style="color:var(--gold)">MAKING?</span> <span class="ln"></span></div>
+    <div class="kinds" id="kinds"></div>
   </div>
 
   <div class="studio">
@@ -345,8 +428,10 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
 
     <!-- ── CONTROLS ──────────────────────────────────────────────────── -->
     <div class="ctl" id="ctl">
+      <!-- ── STEP 2: FOOTAGE ── -->
+      <div data-step="2">
       <div class="lockable">
-      <div class="xl-h2">FOOTAGE <span class="ln"></span><button class="xl-add press" id="add-clips-top">+ Add</button></div>
+      <div class="xl-h2">YOUR <span style="color:var(--gold)">FOOTAGE</span> <span class="ln"></span><button class="xl-add press" id="add-clips-top">+ Add</button></div>
       <div class="drop" id="drop">
         <div class="foot xl-hscroll" id="foot"></div>
         <button class="xl-photo add-clips press" id="add-clips">
@@ -358,78 +443,40 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
       <input type="file" id="file-clips" accept="video/*,image/*" multiple hidden>
       </div>
 
-      <div class="xl-h2">AUTO EDIT <span class="ln"></span></div>
-      <div class="ai-card">
-        <div class="xl-f lockable" style="margin-bottom:12px"><label for="ai-note">Anything specific for this one? (optional)</label>
-          <input id="ai-note" maxlength="300" placeholder="e.g. Ceramic coating on a white Model 3, keep it under 20 seconds"></div>
-        <div class="ai-row">
-          <button class="xl-btn gold press lockable" id="btn-auto">
-            <svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>
-            Make My Reel
-          </button>
-          <div class="ai-status" id="ai-status">The editor watches your footage, picks the best moments and cuts the reel. You review it before anything posts.</div>
-        </div>
-        <div class="prog" id="ai-prog">
-          <div class="shim"><i id="ai-bar"></i></div>
-          <div class="prog-txt"><span id="ai-msg">Starting</span><b id="ai-pct">0%</b></div>
-        </div>
+      <div class="xl-h2">PPF / VINYL <span style="color:var(--gold)">COLORS</span> <span class="ln"></span><span class="opt">Optional</span></div>
+      <div class="xl-hint" id="colors-hint">Add each film you used or want to show. Give the brand and color code if you have it - the studio looks up the exact color, finish and flake. A photo of the sample helps.</div>
+      <div id="colors"></div>
+      <button class="xl-photo add-clips press" id="add-color" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Add a color</span>
+      </button>
+      <input type="file" id="file-swatch" accept="image/*" hidden>
+      <datalist id="brands"><option value="XPEL"><option value="3M"><option value="Avery Dennison"><option value="STEK"><option value="SunTek"><option value="Llumar"><option value="KPMF"><option value="Inozetek"><option value="Hexis"><option value="TeckWrap"><option value="Oracal"><option value="VViViD"></datalist>
+
+      <div class="xl-h2">DESCRIBE THE <span style="color:var(--gold)">JOB</span> <span class="ln"></span></div>
+      <div class="xl-f lockable"><textarea id="ai-note" rows="3" maxlength="600" placeholder="e.g. Full front PPF on a white Model 3, satin over gloss. Show the film going on the hood and the finished car in the sun."></textarea></div>
+      <div class="step-nav"><button class="xl-btn ghost press" type="button" data-go="1">Back</button><button class="xl-btn gold press" type="button" data-go="3" id="go-settings">Next: Settings</button></div>
+      </div>
+
+      <!-- ── STEP 3: SETTINGS ── -->
+      <div data-step="3">
+      <div id="film-wrap">
+        <div class="xl-h2">FILM <span style="color:var(--gold)">MATCH</span> <span class="ln"></span></div>
+        <div class="xl-hint">What the studio found for each color. Check it before rendering - this is what the renders match.</div>
+        <div id="film-cards"></div>
+      </div>
+
+      <div data-kind="color">
+      <div class="xl-h2">CAR <span style="color:var(--gold)">ANGLES</span> <span class="ln"></span></div>
+      <div class="xl-hint" style="margin-top:0">Tap to choose which photos of the car get recolored (up to 4). With only video, the studio grabs stills from it.</div>
+      <div id="cl-photos"></div>
+      <div class="xl-h2">LIGHTING <span class="ln"></span></div>
+      <div class="xl-hint" style="margin-top:0">Each color is shown in every light you pick, so people see how it really changes.</div>
+      <div class="more-chips" id="cl-lights"></div>
+      <div class="cl-opts"><label class="chk"><input type="checkbox" id="cl-hook" checked><span>Open on the real car</span></label></div>
       </div>
 
       <div class="lockable">
-      <div class="xl-h2">COLOR <span style="color:var(--gold)">LINEUP</span> <span class="ln"></span></div>
-      <div class="cl-card" id="cl">
-        <div class="xl-hint" style="margin-top:0">The same car in every wrap color, cut as a montage. Add the car photos and any photos of the film itself to Footage, tap each photo below to mark it CAR or SWATCH, and/or type color names. Then Render. Each render is a few cents on the shop's OpenAI account and is marked COLOR RENDER on the reel.</div>
-        <div class="xl-f" style="margin:12px 0 6px"><label>Photos from Footage - tap to mark: car (up to 4) / swatch / not used</label></div>
-        <div id="cl-photos"></div>
-        <div id="cl-sw"></div>
-        <div class="xl-f" style="margin-bottom:0"><label for="cl-colors">Colors by name, one per line (name the finish) - optional if you marked swatches</label>
-          <textarea id="cl-colors" rows="5" maxlength="1200" placeholder="Gloss Nardo Grey&#10;Satin Black&#10;Matte Military Green&#10;Gloss Miami Blue&#10;Satin Pearl White"></textarea></div>
-        <div class="cl-opts">
-          <label class="chk"><input type="checkbox" id="cl-hook" checked><span>Open on the real car</span></label>
-        </div>
-        <div class="ai-row">
-          <button class="xl-btn gold press" id="cl-go" type="button">
-            <svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18c1.7 0 2-1.3 2-2.2 0-1.6 1.5-2.3 2.8-2.3H18a3 3 0 003-3c0-5-4-8.5-9-8.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15" cy="8" r="1.2"/></svg>
-            Render Colors
-          </button>
-          <div class="ai-status" id="cl-st">Nothing rendered yet.</div>
-        </div>
-        <div class="prog" id="cl-prog"><div class="shim"><i id="cl-bar"></i></div><div class="prog-txt"><span id="cl-msg">Starting</span><b id="cl-pct">0%</b></div></div>
-        <div class="cl-grid" id="cl-grid"></div>
-        <div class="rev-btns" id="cl-make-row" style="display:none;margin-top:14px">
-          <button class="xl-btn gold press" id="cl-make" type="button">Make the Lineup</button>
-          <span class="rules-st" id="cl-count"></span>
-        </div>
-      </div>
-      </div>
-
-      <div class="review" id="review">
-        <div class="xl-h2">REVIEW <span class="ln"></span></div>
-        <div class="rev-why" id="rev-why"></div>
-        <div class="xl-f"><label for="rev-cap">Caption</label><textarea id="rev-cap" rows="4" maxlength="2000"></textarea></div>
-        <div class="xl-f"><label for="rev-tags">Hashtags</label><input id="rev-tags" maxlength="400"></div>
-        <button class="xl-btn ghost press" id="btn-copy">
-          <svg width="15" height="15" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>
-          Copy Caption
-        </button>
-        <div class="xl-f" style="margin-top:16px"><label for="rev-notes">What should change?</label>
-          <textarea id="rev-notes" rows="3" maxlength="1000" placeholder="e.g. Open on the reveal, cut faster, skip the interior shots"></textarea></div>
-        <label class="chk"><input type="checkbox" id="rev-rule"><span>Make this a rule for every reel</span></label>
-        <div class="rev-btns">
-          <button class="xl-btn gold press" id="btn-redo">
-            <svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><polyline points="20,4 20,11 13,11"/></svg>
-            Redo With Notes
-          </button>
-          <button class="xl-btn ghost press" id="btn-note">Save Note Only</button>
-        </div>
-        <div class="rev-meta" id="rev-meta"></div>
-      </div>
-
-      <div class="lockable">
-      <div class="xl-h2">SHOTS <span class="ln"></span></div>
-      <div class="xl-hint">The reel in order. Tweak any shot by hand - trims, labels, blur boxes.</div>
-      <div class="clips" id="clips"></div>
-
       <div class="xl-h2">TEMPLATE <span class="ln"></span></div>
       <div class="xl-seg" id="tpl-seg">
         <button data-tpl="ba">Before / After</button>
@@ -469,6 +516,7 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
       <div id="music"></div>
       <input type="file" id="file-music" accept="audio/*" hidden>
 
+      <details class="memory"><summary>EDITOR'S <span>MEMORY</span><em>Your rules and what it has learned</em></summary>
       <div class="xl-h2">YOUR RULES <span class="ln"></span></div>
       <div class="xl-hint">The editor follows these on every reel, one per line. Notes you mark as rules land here.</div>
       <textarea id="rules" class="xl-input xl-textarea" rows="5" placeholder="Open on the finished car&#10;Skip interior shots unless it is an interior job&#10;Keep reels under 20 seconds"></textarea>
@@ -477,6 +525,74 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
       <div class="xl-h2">WHAT IT HAS <span style="color:var(--gold)">LEARNED</span> <span class="ln"></span></div>
       <div class="xl-hint">When you export a reel the editor cut, the changes you made by hand are saved here, along with your notes. The editor reads the newest of these on every reel. Delete anything it got wrong.</div>
       <div id="learned"><div class="learn-empty">Unlock the studio to see what it has learned.</div></div>
+      </details>
+      </div>
+
+      <div class="xl-h2" id="make-h">MAKE THE <span style="color:var(--gold)">REEL</span> <span class="ln"></span></div>
+      <div data-kind="edit">
+      <div class="ai-card">
+        
+        <div class="ai-row">
+          <button class="xl-btn gold press lockable" id="btn-auto">
+            <svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>
+            Make My Reel
+          </button>
+          <div class="ai-status" id="ai-status">The editor watches your footage, picks the best moments and cuts the reel. You review it before anything posts.</div>
+        </div>
+        <div class="prog" id="ai-prog">
+          <div class="shim"><i id="ai-bar"></i></div>
+          <div class="prog-txt"><span id="ai-msg">Starting</span><b id="ai-pct">0%</b></div>
+        </div>
+      </div>
+      </div>
+      <div data-kind="color">
+      <div class="cl-card" id="cl">
+        <div class="ai-row">
+          <button class="xl-btn gold press" id="cl-go" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18c1.7 0 2-1.3 2-2.2 0-1.6 1.5-2.3 2.8-2.3H18a3 3 0 003-3c0-5-4-8.5-9-8.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15" cy="8" r="1.2"/></svg>
+            Render Colors
+          </button>
+          <div class="ai-status" id="cl-st">Each render is a few cents on the shop's OpenAI account and is marked COLOR RENDER on the reel.</div>
+        </div>
+        <div class="prog" id="cl-prog"><div class="shim"><i id="cl-bar"></i></div><div class="prog-txt"><span id="cl-msg">Starting</span><b id="cl-pct">0%</b></div></div>
+        <div class="cl-grid" id="cl-grid"></div>
+        <div class="rev-btns" id="cl-make-row" style="display:none;margin-top:14px">
+          <button class="xl-btn gold press" id="cl-make" type="button">Make the Lineup</button>
+          <span class="rules-st" id="cl-count"></span>
+        </div>
+      </div>
+      </div>
+      <div class="step-nav"><button class="xl-btn ghost press" type="button" data-go="2">Back</button><button class="xl-btn gold press" type="button" data-go="4" id="go-reel">See the Reel</button></div>
+      </div>
+
+      <!-- ── STEP 4: THE REEL ── -->
+      <div data-step="4">
+      <div class="review" id="review">
+        <div class="xl-h2">REVIEW <span class="ln"></span></div>
+        <div class="rev-why" id="rev-why"></div>
+        <div class="xl-f"><label for="rev-cap">Caption</label><textarea id="rev-cap" rows="4" maxlength="2000"></textarea></div>
+        <div class="xl-f"><label for="rev-tags">Hashtags</label><input id="rev-tags" maxlength="400"></div>
+        <button class="xl-btn ghost press" id="btn-copy">
+          <svg width="15" height="15" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>
+          Copy Caption
+        </button>
+        <div class="xl-f" style="margin-top:16px"><label for="rev-notes">What should change?</label>
+          <textarea id="rev-notes" rows="3" maxlength="1000" placeholder="e.g. Open on the reveal, cut faster, skip the interior shots"></textarea></div>
+        <label class="chk"><input type="checkbox" id="rev-rule"><span>Make this a rule for every reel</span></label>
+        <div class="rev-btns">
+          <button class="xl-btn gold press" id="btn-redo">
+            <svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><polyline points="20,4 20,11 13,11"/></svg>
+            Redo With Notes
+          </button>
+          <button class="xl-btn ghost press" id="btn-note">Save Note Only</button>
+        </div>
+        <div class="rev-meta" id="rev-meta"></div>
+      </div>
+
+      <div class="lockable">
+      <div class="xl-h2">SHOTS <span class="ln"></span></div>
+      <div class="xl-hint">The reel in order. Tweak any shot by hand - trims, labels, blur boxes.</div>
+      <div class="clips" id="clips"></div>
       </div>
 
       <div class="xl-h2">EXPORT <span class="ln"></span></div>
@@ -512,6 +628,8 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
           </div>
         </div>
       </div>
+      <div class="step-nav"><button class="xl-btn ghost press" type="button" data-go="3">Back</button></div>
+      </div>
     </div>
   </div>
 </div>
@@ -527,7 +645,7 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1j-2026-11-23-swatch';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1k-2026-11-24-wizard';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -1680,7 +1798,7 @@ async function autoEdit(prev) {
     }
     const footage = items.map(it => ({ name: it.name, kind: it.kind, dur: it.dur, w: it.w, h: it.h, audio: it.audio }));
     const want = {};
-    const note = $('ai-note').value.trim(); if (note) want.note = note;
+    const note = jobNote(); if (note) want.note = note;
     let r;
     try {
       r = await fetch(PLAN, { method: 'POST', headers: { 'x-studio-key': KEY, 'content-type': 'application/json' },
@@ -1699,6 +1817,7 @@ async function autoEdit(prev) {
         S.usage = json.usage || null;
         $('rev-meta').textContent = (json.model || '') + (json.usage ? ' - ' + json.usage.in.toLocaleString() + ' in / ' + json.usage.out.toLocaleString() + ' out tokens' : '') + ' - ' + Math.round(el) + 's';
         toast(prev ? 'New cut ready' : 'Your reel is ready to review');
+        if (S.step !== 4) go(4);
         return json.plan;
       }
       if (status === 200 && json && json.status === 'error') throw new Error(json.error || 'The editor failed');
@@ -1977,6 +2096,8 @@ function projState() {
   return {
     v: 1, footage, shots, tpl: S.tpl, cut: S.cut, look: Object.assign({}, S.look), title: S.title, service: S.service, cta: S.cta, tag: S.tag, music: m,
     note: $('ai-note').value,
+    kind: S.kind, lights: S.lights.slice(),
+    colors: S.colors.map(c => ({ brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, spec: c.spec, sig: c.spec ? colorSig(c) : '', swatches: c.swatches.map(w => ({ key: w.key, name: w.name, thumb: w.thumb })) })),
     ai: (S.plan || review) ? { plan: S.plan || null, usage: S.usage || null, why: $('rev-why').textContent, caption: $('rev-cap').value,
       tags: $('rev-tags').value, notes: $('rev-notes').value, meta: $('rev-meta').textContent } : null,
     len: Math.round(plan().total * 100) / 100
@@ -2042,6 +2163,8 @@ function resetStudio() {
   S.title = ''; S.service = ''; S.cta = 'Book at excesslook.com'; S.tag = 'Newport Beach, CA';
   $('f-title').value = ''; $('f-service').value = ''; $('f-cta').value = S.cta; $('f-tag').value = S.tag;
   $('ai-note').value = '';
+  S.colors = []; renderColors(); S.lights = ['shade', 'sun']; renderLights();
+  CL.tiles = []; renderClGrid(); $('cl-make-row').style.display = 'none';
   $('review').classList.remove('on'); $('rev-why').textContent = ''; $('rev-cap').value = ''; $('rev-tags').value = ''; $('rev-notes').value = ''; $('rev-meta').textContent = '';
   $('rev-rule').checked = false;
   $('ai-status').classList.remove('err');
@@ -2115,6 +2238,18 @@ async function restoreProject(p, quiet) {
     S.cta = p.cta != null ? p.cta : S.cta; S.tag = p.tag != null ? p.tag : S.tag;
     $('f-title').value = S.title; $('f-service').value = S.service; $('f-cta').value = S.cta; $('f-tag').value = S.tag;
     $('ai-note').value = p.note || '';
+    S.lights = Array.isArray(p.lights) && p.lights.length ? p.lights.filter(x => LIGHT_NAMES[x]) : ['shade', 'sun'];
+    S.colors = [];
+    for (const c of (Array.isArray(p.colors) ? p.colors : [])) {
+      const sw = [];
+      for (const w of (c.swatches || [])) {
+        const f = fileOf(await idbGet(w.key), w);
+        sw.push({ key: w.key, name: w.name, thumb: w.thumb || '', jpg: f ? (await fileThumb(f, 1024)).split(',')[1] : '' });
+      }
+      addColor({ brand: c.brand || '', line: c.line || '', name: c.name || '', code: c.code || '', finish: c.finish || '', spec: c.spec || null, swatches: sw, research: c.spec ? 'done' : 'idle' });
+      const nc = S.colors[S.colors.length - 1]; nc.sig = c.spec ? colorSig(nc) : '';
+    }
+    renderColors(); renderLights();
     setStatus('', 'Opening...');
     const foot = Array.isArray(p.footage) ? p.footage : [];
     const slot = [];
@@ -2155,6 +2290,9 @@ async function restoreProject(p, quiet) {
     const miss = S.missing.length + (S.musicMissing ? 1 : 0);
     setStatus(KEY ? '' : 'local', (KEY ? 'Saved ' : 'Kept on this device - ') + (p.updated ? dayOf(p.updated) : ''));
     if (!quiet || miss) toast(miss ? 'Opened - add ' + miss + ' file' + (miss === 1 ? '' : 's') + ' back' : 'Reel opened');
+    setKind(p.kind || ((S.clips.length || S.waiting.length) ? 'walk' : ''), true);
+    go(S.clips.length ? 4 : S.kind ? 2 : 1);
+    if (S.waiting.length && S.step < 2) go(2);
   } finally { restoring = false; busy(false); }
 }
 async function openProject(id, quiet) {
@@ -2238,6 +2376,7 @@ $('btn-new').addEventListener('click', () => {
   resetStudio();
   try { localStorage.removeItem('xl_studio_last'); } catch (e) {}
   toast('New reel - the last one is saved in Projects');
+  setKind(''); go(1);
   $('scroller').scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 });
 $('proj-name').addEventListener('click', () => {
@@ -2254,49 +2393,247 @@ $('proj-name').addEventListener('click', () => {
 });
 (function reopenLast() {
   let id = ''; try { id = localStorage.getItem('xl_studio_last') || ''; } catch (e) {}
-  if (id) openProject(id, true);
+  if (id) setTimeout(() => openProject(id, true), 0);     // after every module has set up
 })();
 
-/* ══ ST1i - COLOR LINEUP ══════════════════════════════════════════════════
-   Cole: "what if i gave the studio a few pictures of a car and 10 different wrap colors. could it do a montage
-   of that car in all the colors?" -> option 2, built in. The car photos (images already in Footage) go up once
-   (studio-api cl-src), studio-recolor-background renders every photo x color on OpenAI's image editor, the page
-   polls cl-status and pulls each finished render (cl-img). Tap a tile to leave it out, the arrow to re-roll it.
-   Make the Lineup adds the kept renders to Footage (kept on this device like any clip) and cuts the reel:
-   the real car first, then each color with its name, hard cuts. Renders carry a COLOR RENDER tag. */
-const CL = { job: '', photos: [], tiles: [], nextK: 0, polling: false, picked: null };
+/* ══ ST1k - WIZARD ════════════════════════════════════════════════════════
+   1 Type -> 2 Footage (+ PPF / vinyl colors + job description) -> 3 Settings (film match, car angles + lighting
+   for color previews, template / look / text / music, the editor's memory, then Make) -> 4 Reel (review, shots,
+   export). Every control from before is still here; the wizard only orders it. */
+const KINDS = {
+  ba: { name: 'Before / After', tpl: 'ba', sub: 'Dirty to clean, damaged to fixed.', hint: 'Reel type: Before / After - show the problem first, then the result.',
+    ic: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="12" y1="5" x2="12" y2="19"/><path d="M7 15l2-3 2 2"/><path d="M15 10.5l1.5 1.5 3-3"/></svg>' },
+  walk: { name: 'Walkaround', tpl: 'walk', sub: 'The finished car from every angle.', hint: 'Reel type: Walkaround - show the whole finished car from every angle.',
+    ic: '<svg viewBox="0 0 24 24"><path d="M3 15l2-5h14l2 5v3H3z"/><circle cx="7.5" cy="18" r="1.8"/><circle cx="16.5" cy="18" r="1.8"/><path d="M21 7a9 4 0 00-18 0"/><polyline points="19,4 21,7 18,8"/></svg>' },
+  reveal: { name: 'Reveal', tpl: 'reveal', sub: 'Build up, then the big reveal.', hint: 'Reel type: Reveal - build anticipation with details, then reveal the whole car.',
+    ic: '<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>' },
+  process: { name: 'Install / Process', tpl: 'walk', sub: 'PPF, coating or correction, step by step.', hint: 'Reel type: Install / Process - time-lapse the long work at 4x-16x, real time for the satisfying detail moments, a short caption naming each step, end on the finished car.',
+    ic: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><polyline points="12,7 12,12 15,14"/><path d="M4 4l3 3"/></svg>' },
+  color: { name: 'Color Preview', tpl: 'walk', sub: 'This car in your PPF or vinyl colors.', color: true,
+    ic: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18c1.7 0 2-1.3 2-2.2 0-1.6 1.5-2.3 2.8-2.3H18a3 3 0 003-3c0-5-4-8.5-9-8.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15" cy="8" r="1.2"/></svg>' },
+  promo: { name: 'Offer / Promo', tpl: 'walk', sub: 'A price or deal, big bold text.', hint: 'Reel type: Offer / Promo - bold rotating offer text one idea at a time, quick cuts, end on Book now.',
+    ic: '<svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>' }
+};
+S.kind = ''; S.step = 1; S.colors = []; S.lights = ['shade', 'sun'];
+const LIGHT_NAMES = { sun: 'In the sun', shade: 'In the shade', overcast: 'Overcast', golden: 'Golden hour', night: 'At night', studio: 'Studio lights' };
+function renderKinds() {
+  $('kinds').innerHTML = Object.keys(KINDS).map(k => { const d = KINDS[k];
+    return '<button class="kind press' + (S.kind === k ? ' on' : '') + '" type="button" data-kind-pick="' + k + '">' + d.ic.replace('<svg ', '<svg width="30" height="30" ') + '<span class="t">' + d.name + '</span><span class="s">' + d.sub + '</span></button>'; }).join('');
+  K.pressAll($('kinds'));
+}
+$('kinds').addEventListener('click', e => {
+  const b = e.target.closest('[data-kind-pick]'); if (!b) return;
+  setKind(b.dataset.kindPick);
+  go(2);
+});
+function setKind(k, keepTpl) {
+  if (!KINDS[k]) k = '';
+  const changed = S.kind !== k;
+  S.kind = k;
+  document.body.classList.toggle('k-color', k === 'color');
+  document.body.classList.toggle('k-edit', !!k && k !== 'color');
+  if (k && changed && !keepTpl && !S.clips.length) setTpl(KINDS[k].tpl);
+  $('colors-hint').textContent = k === 'color'
+    ? 'Add every PPF or vinyl color you want to show on this car. Brand and color code give the closest match - the studio researches each one. A photo of the sample helps.'
+    : 'Optional. Add the film you used and the reel can name it. Give the brand and code if you have it.';
+  renderKinds();
+}
+function canGo(n) { return n === 1 || (n >= 2 && !!S.kind) && (n < 4 || S.clips.length > 0); }
+function go(n) {
+  n = clamp(n, 1, 4);
+  if (!canGo(n)) { toast(n === 4 ? 'Make the reel first' : 'Pick what you are making first', true); return; }
+  if (n === 3 && S.step === 2) { if (!S.sources.length && !S.missing.length) { toast('Add the footage first', true); return; } researchAll(); }
+  S.step = n;
+  [1, 2, 3, 4].forEach(i => document.body.classList.toggle('st-' + i, i === n));
+  document.querySelectorAll('#steps [data-go]').forEach(b => { const i = +b.dataset.go; b.classList.toggle('on', i === n); b.classList.toggle('done', i < n); b.disabled = !canGo(i); });
+  if (n === 3) { renderFilms(); renderClPhotos(); renderLights(); }
+  $('scroller').scrollTo({ top: 0, behavior: 'auto' });
+  dirty(0);
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-go]'); if (!b || b.disabled) return;
+  go(+b.dataset.go);
+});
+
+/* ── PPF / vinyl colors (step 2) ── */
+let colorUid = 0;
+const FINISHES = [['', 'Not sure'], ['gloss', 'Gloss'], ['satin', 'Satin'], ['matte', 'Matte'], ['metallic', 'Metallic'], ['color shift', 'Color shift'], ['chrome', 'Chrome'], ['clear', 'Clear PPF']];
+function colorName(c) { return [c.brand, c.line, c.name].filter(Boolean).join(' ') || (c.spec && c.spec.color_name) || 'Color ' + (S.colors.indexOf(c) + 1); }
+function colorSig(c) { return [c.brand, c.line, c.name, c.code, c.finish, c.swatches.map(w => w.key).join(',')].join('|').toLowerCase(); }
+function addColor(o) { const c = Object.assign({ id: 'c' + (++colorUid), brand: '', line: '', name: '', code: '', finish: '', swatches: [], spec: null, research: 'idle', sig: '', err: '' }, o || {}); S.colors.push(c); renderColors(); return c; }
+function renderColors() {
+  const host = $('colors');
+  host.innerHTML = S.colors.map((c, i) => '<div class="colr" data-cid="' + c.id + '">'
+    + '<div class="colr-top"><span class="t">' + esc(colorName(c)) + '</span><button class="ibtn press" type="button" data-cdel aria-label="Remove this color">' + IC.x + '</button></div>'
+    + '<div class="colr-grid">'
+    + '<div class="xl-f"><label>Brand</label><input data-cf="brand" list="brands" maxlength="40" placeholder="XPEL" value="' + esc(c.brand) + '"></div>'
+    + '<div class="xl-f"><label>Product line</label><input data-cf="line" maxlength="60" placeholder="Stealth / 2080 / SW900" value="' + esc(c.line) + '"></div>'
+    + '<div class="xl-f"><label>Color name</label><input data-cf="name" maxlength="60" placeholder="Nardo Grey" value="' + esc(c.name) + '"></div>'
+    + '<div class="xl-f"><label>Color code</label><input data-cf="code" maxlength="40" placeholder="e.g. S261" value="' + esc(c.code) + '"></div>'
+    + '</div>'
+    + chips('cfin', FINISHES, c.finish)
+    + '<div class="colr-sw">' + c.swatches.map((w, j) => '<img alt="Sample photo" width="48" height="48" src="' + w.thumb + '" data-swdel="' + j + '" title="Tap to remove">').join('')
+    + '<button class="xl-add press" type="button" data-swadd>' + (c.swatches.length ? '+ Another photo' : '+ Photo of the sample') + '</button></div>'
+    + '</div>').join('');
+  K.pressAll(host);
+}
+let swatchFor = null;
+$('add-color').addEventListener('click', () => { addColor(); const ins = $('colors').querySelectorAll('[data-cf="brand"]'); if (ins.length) ins[ins.length - 1].focus(); });
+$('colors').addEventListener('input', e => {
+  const i = e.target.closest('[data-cf]'); if (!i) return;
+  const c = S.colors.find(x => x.id === i.closest('.colr').dataset.cid); if (!c) return;
+  c[i.dataset.cf] = i.value.trim();
+  i.closest('.colr').querySelector('.colr-top .t').textContent = colorName(c);
+  dirty(800);
+});
+$('colors').addEventListener('click', e => {
+  const card = e.target.closest('.colr'); if (!card) return;
+  const c = S.colors.find(x => x.id === card.dataset.cid); if (!c) return;
+  const f = e.target.closest('[data-a="cfin"]');
+  if (f) { c.finish = f.dataset.v; renderColors(); return; }
+  if (e.target.closest('[data-cdel]')) { const at = S.colors.indexOf(c); S.colors.splice(at, 1); renderColors(); K.toast('Color removed', () => { S.colors.splice(at, 0, c); renderColors(); }); return; }
+  if (e.target.closest('[data-swadd]')) { swatchFor = c; $('file-swatch').value = ''; $('file-swatch').click(); return; }
+  const d = e.target.closest('[data-swdel]');
+  if (d) { c.swatches.splice(+d.dataset.swdel, 1); renderColors(); }
+});
+async function fileThumb(file, max) {
+  const url = URL.createObjectURL(file);
+  try {
+    const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Could not open that photo')); i.src = url; });
+    const sc = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+    const cv = document.createElement('canvas'); cv.width = Math.round(im.naturalWidth * sc); cv.height = Math.round(im.naturalHeight * sc);
+    cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+    return cv.toDataURL('image/jpeg', 0.9);
+  } finally { URL.revokeObjectURL(url); }
+}
+$('file-swatch').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0], c = swatchFor; if (!f || !c) return;
+  try {
+    const key = fileKey(f); keepFile(key, f);
+    c.swatches.push({ key, name: f.name, thumb: await fileThumb(f, 160), jpg: (await fileThumb(f, 1024)).split(',')[1] });
+    renderColors(); dirty(300);
+  } catch (er) { toast(er.message, true); }
+});
+
+/* ── film research (step 3) ── */
+const FILM = '/.netlify/functions/studio-film-background';
+async function researchOne(c, force) {
+  const sig = colorSig(c);
+  if (!force && c.sig === sig && (c.research === 'done' || c.research === 'working')) return;
+  if (!(c.brand || c.name || c.code || c.swatches.length)) { c.research = 'idle'; return; }
+  c.sig = sig; c.research = 'working'; c.err = ''; renderFilms();
+  const id = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  try {
+    const r = await fetch(FILM, { method: 'POST', headers: { 'x-studio-key': KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ id, brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, swatch: c.swatches[0] ? c.swatches[0].jpg : '' }) });
+    if (!(r.status === 202 || r.ok)) throw new Error('The research would not start (' + r.status + ')');
+    const t0 = Date.now();
+    for (;;) {
+      await sleep(3000);
+      if (c.sig !== sig) return;                       // changed meanwhile - a newer lookup takes over
+      const { status, json } = await api('film', { query: { id } });
+      if (status === 200 && json && json.status === 'done') { c.spec = json.spec; c.research = 'done'; break; }
+      if (status === 200 && json && json.status === 'error') throw new Error(json.error || 'Research failed');
+      if (Date.now() - t0 > 5 * 60000) throw new Error('The research took too long - try again');
+    }
+  } catch (e) { c.research = 'error'; c.err = e.message || String(e); }
+  renderFilms(); dirty(300);
+}
+async function researchAll(force) {
+  if (!S.colors.some(c => c.brand || c.name || c.code || c.swatches.length)) return;
+  if (!(await unlock())) return;
+  S.colors.forEach(c => researchOne(c, force));
+}
+function renderFilms() {
+  const host = $('film-cards'), list = S.colors.filter(c => c.brand || c.name || c.code || c.swatches.length);
+  $('film-wrap').style.display = list.length ? '' : 'none';
+  host.innerHTML = list.map(c => {
+    const sp = c.spec, head = '<div class="film-h"><span class="t">' + esc(colorName(c)) + (c.code ? ' <span style="color:var(--dim)">' + esc(c.code) + '</span>' : '') + '</span>'
+      + (sp && c.research === 'done' ? '<span class="conf ' + sp.confidence + '">' + (sp.confidence === 'exact' ? 'Exact match found' : sp.confidence === 'close' ? 'Close match' : 'Estimate') + '</span>' : '')
+      + '<button class="xl-add press" type="button" data-refilm="' + c.id + '">' + (c.research === 'working' ? 'Looking...' : 'Look up again') + '</button></div>';
+    if (c.research === 'working') return '<div class="film">' + head + '<div class="film-wait"><span>Searching the maker\'s data for the exact color, finish and flake</span><div class="shim"><i style="width:60%"></i></div></div></div>';
+    if (c.research === 'error') return '<div class="film">' + head + '<div class="film-note" style="color:#E5484D">' + esc(c.err) + '</div></div>';
+    if (!sp) return '<div class="film">' + head + '<div class="film-wait">Not looked up yet.</div></div>';
+    const hx = [sp.hex.highlight, sp.hex.mid, sp.hex.shadow].filter(Boolean);
+    const row = (k, v) => v ? '<dt>' + k + '</dt><dd>' + esc(v) + '</dd>' : '';
+    return '<div class="film">' + head
+      + (hx.length ? '<div class="film-sw">' + hx.map(h => '<i style="background:' + h + '" title="' + h + '"></i>').join('') + '</div>' : '')
+      + '<dl class="film-l">' + row('Film', [sp.brand, sp.product_line, sp.color_name].filter(Boolean).join(' ') + (sp.code ? ' - ' + sp.code : '')) + row('Type', sp.film_type + (sp.clear ? ' (keeps the paint color)' : ''))
+      + row('Finish', sp.finish) + row('Color', sp.base_color) + row('Flake', sp.flake && sp.flake.present ? [sp.flake.color, sp.flake.size].filter(Boolean).join(', ') : '')
+      + row('Color shift', sp.shift && sp.shift.colors) + row('In sun', sp.lighting && sp.lighting.sun) + row('In shade', sp.lighting && sp.lighting.shade)
+      + row('Overcast', sp.lighting && sp.lighting.overcast) + row('At night', sp.lighting && sp.lighting.night) + '</dl>'
+      + (sp.note ? '<div class="film-note">' + esc(sp.note) + '</div>' : '')
+      + (sp.sources && sp.sources.length ? '<div class="film-src">Sources: ' + sp.sources.map(x => '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || x.url) + '</a>').join('') + '</div>' : '')
+      + '</div>';
+  }).join('');
+  K.pressAll(host);
+}
+$('film-cards').addEventListener('click', async e => {
+  const b = e.target.closest('[data-refilm]'); if (!b) return;
+  const c = S.colors.find(x => x.id === b.dataset.refilm); if (!c || c.research === 'working') return;
+  if (!(await unlock())) return;
+  researchOne(c, true);
+});
+function filmSummary() {
+  return S.colors.filter(c => c.brand || c.name || c.code).map(c => { const sp = c.spec;
+    return colorName(c) + (c.code ? ' (' + c.code + ')' : '') + (sp ? ' - ' + [sp.film_type, sp.finish, sp.base_color].filter(Boolean).join(', ') : c.finish ? ' - ' + c.finish : ''); }).join('; ');
+}
+function jobNote() {
+  const k = KINDS[S.kind], parts = [];
+  if (k && k.hint) parts.push(k.hint);
+  const d = $('ai-note').value.trim(); if (d) parts.push('The job: ' + d);
+  const f = filmSummary(); if (f) parts.push('Film used: ' + f + '. Name it right in the text and caption.');
+  return parts.join(' ');
+}
+
+/* ══ COLOR PREVIEW (renders) ══════════════════════════════════════════════
+   ST1i / ST1j built on OpenAI's image editor; ST1k drives it from the color cards: each color x car angle x
+   lighting is one render, with the researched spec and the sample photo when there is one. */
+const CL = { job: '', photos: [], tiles: [], nextK: 0, polling: false, picked: null, role: new Map() };
 const RECOLOR = '/.netlify/functions/studio-recolor-background';
-function clImages() { return S.sources.filter(f => f.kind === 'image' && !/^render-/.test(f.name)); }   // renders are not car photos
-/* ST1j - each photo is the CAR, a SWATCH (a photo of the film - matched exactly) or not used. Cole photographed the
-   PPF and got a slideshow; now that photo is the color. A new photo starts as car (up to 4), tap cycles. */
-CL.role = new Map(); CL.swName = new Map();
 const fk = f => f.key || f.name;
-function clRole(f) { return CL.role.get(fk(f)) || ''; }
-function clCars() { return clImages().filter(f => clRole(f) === 'car'); }
-function clSwatches() { return clImages().filter(f => clRole(f) === 'swatch'); }
+function clImages() { return S.sources.filter(f => f.kind === 'image' && !/^render-/.test(f.name)); }   // renders are not car photos
+function clCars() { return clImages().filter(f => CL.role.get(fk(f)) === 'car'); }
 function renderClPhotos() {
   const host = $('cl-photos'), imgs = clImages();
   [...CL.role.keys()].forEach(k => { if (!imgs.some(f => fk(f) === k)) CL.role.delete(k); });
   imgs.forEach(f => { if (!CL.role.has(fk(f))) CL.role.set(fk(f), clCars().length < 4 ? 'car' : 'off'); });
   CL.picked = new Set(clCars().map(fk));
-  if (!imgs.length) { host.innerHTML = '<div class="cl-none">Add 1 to 4 photos of the car in Footage first - side, front three-quarter and rear three-quarter work best. A photo of the wrap or PPF sample works as a swatch.</div>'; $('cl-sw').innerHTML = ''; return; }
-  host.innerHTML = '<div class="cl-photos">' + imgs.map(f => { const r = clRole(f);
-    return '<button class="cl-ph press' + (r === 'car' ? ' on' : r === 'swatch' ? ' sw' : '') + '" type="button" data-k="' + esc(fk(f)) + '" aria-label="' + esc(f.name) + ': ' + (r || 'not used') + '">'
-      + '<img alt="" width="58" height="58" src="' + (f.thumb || '') + '">' + (r === 'car' ? '<i>CAR</i>' : r === 'swatch' ? '<i>SWATCH</i>' : '') + '<b>F' + f.fid + '</b></button>'; }).join('') + '</div>';
-  const sw = clSwatches();
-  $('cl-sw').innerHTML = sw.map(f => '<div class="cl-sw-row"><img alt="" width="40" height="40" src="' + (f.thumb || '') + '"><div class="xl-f"><input data-sw="' + esc(fk(f)) + '" maxlength="60" placeholder="Name for this film, e.g. XPEL Stealth" value="' + esc(CL.swName.get(fk(f)) || '') + '" aria-label="Name for swatch F' + f.fid + '"></div></div>').join('');
+  if (!imgs.length) { host.innerHTML = '<div class="cl-none">' + (S.sources.some(f => f.kind === 'video') ? 'Only video so far - the studio will grab three stills of the car from it when you render. Or add photos in step 2.' : 'Add photos of the car in step 2 - side, front three-quarter and rear three-quarter work best.') + '</div>'; return; }
+  host.innerHTML = '<div class="cl-photos">' + imgs.map(f => { const on = CL.role.get(fk(f)) === 'car';
+    return '<button class="cl-ph press' + (on ? ' on' : '') + '" type="button" data-k="' + esc(fk(f)) + '" aria-label="' + esc(f.name) + (on ? ': used' : ': not used') + '">'
+      + '<img alt="" width="58" height="58" src="' + (f.thumb || '') + '">' + (on ? '<i>CAR</i>' : '') + '<b>F' + f.fid + '</b></button>'; }).join('') + '</div>';
 }
 $('cl-photos').addEventListener('click', e => {
   const b = e.target.closest('.cl-ph'); if (!b) return;
-  const k = b.dataset.k, cur = CL.role.get(k) || 'off';
-  let nx = cur === 'car' ? 'swatch' : cur === 'swatch' ? 'off' : 'car';
-  if (nx === 'car' && clCars().length >= 4) nx = 'swatch';
-  CL.role.set(k, nx);
+  const k = b.dataset.k, on = CL.role.get(k) === 'car';
+  if (!on && clCars().length >= 4) { toast('Up to 4 car photos', true); return; }
+  CL.role.set(k, on ? 'off' : 'car');
   renderClPhotos();
 });
-$('cl-sw').addEventListener('input', e => { const i = e.target.closest('[data-sw]'); if (i) CL.swName.set(i.dataset.sw, i.value.trim()); });
-function clColors() {
-  return [...new Set($('cl-colors').value.split('\n').map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean))].slice(0, 12);
+function renderLights() {
+  $('cl-lights').innerHTML = Object.keys(LIGHT_NAMES).map(k => '<button class="chipbtn press' + (S.lights.includes(k) ? ' on' : '') + '" type="button" data-light="' + k + '">' + LIGHT_NAMES[k] + '</button>').join('');
+}
+$('cl-lights').addEventListener('click', e => {
+  const b = e.target.closest('[data-light]'); if (!b) return;
+  const k = b.dataset.light;
+  S.lights = S.lights.includes(k) ? S.lights.filter(x => x !== k) : S.lights.concat(k);
+  if (!S.lights.length) S.lights = [k];
+  S.lights = Object.keys(LIGHT_NAMES).filter(x => S.lights.includes(x));
+  renderLights(); dirty(300);
+});
+async function grabStills(src, n) {
+  const out = [], v = src.el, d = src.srcDur || 1;
+  for (let i = 0; i < n; i++) {
+    const t = d * (i + 1) / (n + 1);
+    await new Promise(r => { const done = () => { v.removeEventListener('seeked', done); r(); }; v.addEventListener('seeked', done); v.currentTime = t; setTimeout(done, 3000); });
+    const [w, h] = mediaSize(src), sc = Math.min(1, 1536 / Math.max(w, h));
+    const cv = document.createElement('canvas'); cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+    cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+    out.push(new File([blob], 'still-' + String(src.name).replace(/\.[^.]+$/, '') + '-' + (i + 1) + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
+  }
+  return out;
 }
 function photoJpeg(src) {
   const [w, h] = mediaSize(src), sc = Math.min(1, 1536 / Math.max(w, h));
@@ -2305,11 +2642,12 @@ function photoJpeg(src) {
   return { jpg: cv.toDataURL('image/jpeg', 0.9).split(',')[1], w: cv.width, h: cv.height };
 }
 const RR_IC = '<svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><polyline points="20,4 20,11 13,11"/></svg>';
+function tileName(t) { return t.color + (t.light ? ' - ' + LIGHT_NAMES[t.light] : '') + (CL.photos.length > 1 ? ' - ' + (t.src + 1) : ''); }
 function renderClGrid() {
   const host = $('cl-grid');
-  host.innerHTML = CL.tiles.map((t, i) => '<div class="cl-tile' + (t.keep ? '' : ' off') + '" role="button" tabindex="0" data-i="' + i + '" aria-label="' + esc(t.color) + '">'
+  host.innerHTML = CL.tiles.map((t, i) => '<div class="cl-tile' + (t.keep ? '' : ' off') + '" role="button" tabindex="0" data-i="' + i + '" aria-label="' + esc(tileName(t)) + '">'
     + (t.url ? '<img alt="" src="' + t.url + '">' : t.status === 'error' ? '<div class="er">' + esc(t.error || 'Failed') + '</div>' : '<div class="sk"></div>')
-    + '<div class="cap">' + esc(t.color) + (CL.photos.length > 1 ? ' - ' + (t.src + 1) : '') + '</div>'
+    + '<div class="cap">' + esc(tileName(t)) + '</div>'
     + ((t.status === 'done' || t.status === 'error') ? '<button class="rr press" type="button" data-rr="' + i + '" aria-label="Render this one again">' + RR_IC + '</button>' : '')
     + '</div>').join('');
   const done = CL.tiles.filter(t => t.status === 'done'), kept = done.filter(t => t.keep);
@@ -2368,13 +2706,23 @@ async function clPoll() {
   finally { CL.polling = false; $('cl-prog').classList.remove('on'); }
 }
 async function clRender() {
-  const imgs = clCars(), sws = clSwatches().slice(0, 8);
-  const colors = sws.map((f, j) => ({ name: CL.swName.get(fk(f)) || 'Swatch F' + f.fid, ref: 4 + j, sw: f }))
-    .concat(clColors().map(n => ({ name: n, ref: null })));
-  if (!imgs.length) { toast('Mark at least one photo as the CAR', true); return; }
-  if (!colors.length) { toast('Mark a swatch photo or type at least one color', true); $('cl-colors').focus(); return; }
-  if (imgs.length * colors.length > 60) { toast('That is ' + imgs.length * colors.length + ' renders - keep it to 60 or fewer', true); return; }
+  const colors = S.colors.filter(c => c.brand || c.name || c.code || c.swatches.length);
+  if (!colors.length) { toast('Add the colors in step 2 first', true); return; }
+  if (colors.some(c => c.research === 'working')) { toast('Still looking up the films - one moment', true); return; }
   if (!(await unlock())) return;
+  let imgs = clCars();
+  if (!imgs.length) {
+    const vid = S.sources.find(f => f.kind === 'video');
+    if (!vid) { toast('Add photos or a video of the car first', true); return; }
+    $('cl-st').textContent = 'Grabbing stills of the car from ' + vid.name;
+    const files = await grabStills(vid, 3);
+    for (const f of files) { const src = await addSource(f); CL.role.set(fk(src), 'car'); }
+    renderFootage(); renderClPhotos();
+    imgs = clCars();
+  }
+  const lights = S.lights.length ? S.lights : ['shade'];
+  const n = colors.length * imgs.length * lights.length;
+  if (n > 60) { toast('That is ' + n + ' renders - keep it to 60 or fewer (fewer angles or lights)', true); return; }
   const ping = await api('ping').catch(() => null);
   if (ping && ping.json && ping.json.img === false) {
     $('cl-st').textContent = 'The OpenAI key is not set yet - add OPENAI_API_KEY in Netlify (excesslook-studio site settings), then redeploy.';
@@ -2387,12 +2735,13 @@ async function clRender() {
     CL.photos = imgs; CL.nextK = 0;
     $('cl-prog').classList.add('on'); $('cl-msg').textContent = 'Sending the car photos'; $('cl-bar').style.width = '2%'; $('cl-pct').textContent = '0%';
     for (let i = 0; i < imgs.length; i++) await api('cl-src', { query: { job: CL.job, i }, body: photoJpeg(imgs[i]) });
-    for (const c of colors) if (c.sw) await api('cl-src', { query: { job: CL.job, i: c.ref }, body: photoJpeg(c.sw) });
+    const refs = {};
+    for (let j = 0; j < colors.length && j < 8; j++) { const w = colors[j].swatches[0]; if (w && w.jpg) { refs[colors[j].id] = 4 + j; await api('cl-src', { query: { job: CL.job, i: 4 + j }, body: { jpg: w.jpg, w: 1024, h: 1024 } }); } }
     CL.tiles = [];
-    colors.forEach(c => imgs.forEach((f, i) => CL.tiles.push({ k: CL.nextK++, src: i, ref: c.ref, color: c.name, status: 'waiting', keep: true })));
+    colors.forEach(c => lights.forEach(l => imgs.forEach((f, i) => CL.tiles.push({ k: CL.nextK++, src: i, ref: refs[c.id] != null ? refs[c.id] : null, color: colorName(c), spec: c.spec, light: l, status: 'waiting', keep: true }))));
     renderClGrid();
-    $('cl-st').textContent = 'Rendering ' + CL.tiles.length + ' - you can keep editing meanwhile.';
-    await clStart(CL.tiles.map(t => ({ k: t.k, src: t.src, ref: t.ref, color: t.color })));
+    $('cl-st').textContent = 'Rendering ' + CL.tiles.length + ' - you can keep adjusting settings meanwhile.';
+    await clStart(CL.tiles.map(t => ({ k: t.k, src: t.src, ref: t.ref, color: t.color, spec: t.spec, light: t.light })));
     await clPoll();
   } catch (e) { $('cl-st').textContent = e.message || String(e); $('cl-st').classList.add('err'); toast(e.message || String(e), true); $('cl-prog').classList.remove('on'); }
   finally { $('cl-go').disabled = false; }
@@ -2403,7 +2752,7 @@ async function clReroll(i) {
   if (t.url) URL.revokeObjectURL(t.url);
   Object.assign(t, { k: CL.nextK++, status: 'waiting', url: '', blob: null, error: '', keep: true });
   renderClGrid();
-  try { await clStart([{ k: t.k, src: t.src, ref: t.ref, color: t.color }]); clPoll(); }
+  try { await clStart([{ k: t.k, src: t.src, ref: t.ref, color: t.color, spec: t.spec, light: t.light }]); clPoll(); }
   catch (e) { t.status = 'error'; t.error = e.message; renderClGrid(); }
 }
 async function addSource(file) {
@@ -2417,40 +2766,42 @@ async function addSource(file) {
 async function clMake() {
   const kept = CL.tiles.filter(t => t.status === 'done' && t.keep && t.blob);
   if (!kept.length) { toast('Keep at least one render', true); return; }
-  const go = async () => {
+  const go4 = async () => {
     $('cl-make').disabled = true;
     try {
       setPlaying(false);
       const shots = [];
-      const per = CL.photos.length > 1 ? 0.8 : 1.1;
+      const per = CL.photos.length > 1 || S.lights.length > 1 ? 0.9 : 1.1;
       if ($('cl-hook').checked && CL.photos[0]) shots.push(shotFrom(CL.photos[0], { inT: 0, outT: 1.4, text: 'WHICH COLOR WOULD YOU PICK?', textPos: 'center', motion: 'none', fit: CL.photos[0].fit }));
       const slug = x => String(x).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
       for (const t of kept) {
-        const f = new File([t.blob], 'render-' + slug(t.color) + '-' + (t.src + 1) + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+        const f = new File([t.blob], 'render-' + slug(t.color) + '-' + (t.light || 'x') + '-' + (t.src + 1) + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
         const src = await addSource(f);
-        shots.push(shotFrom(src, { inT: 0, outT: per, text: t.color.toUpperCase(), textPos: 'bottom', motion: 'none', render: true, fit: src.fit, what: t.color + ' wrap render' }));
+        shots.push(shotFrom(src, { inT: 0, outT: per, text: t.color.toUpperCase(), textPos: 'bottom', label: t.light && S.lights.length > 1 ? LIGHT_NAMES[t.light].toUpperCase() : '', motion: 'none', render: true, fit: src.fit, what: t.color + ' render, ' + (LIGHT_NAMES[t.light] || '') }));
       }
       S.clips = shots; S.sel = null; S.sampled = null; S.plan = null;
       setTpl('walk'); setCut('hard');
       setLook(Object.assign({}, S.look, { headline: 'none', lower: 'off' }));
       renderFootage(); renderClips(); renderClPhotos(); replan(false); seekTo(0);
       api('cl-drop', { query: { job: CL.job, n: CL.nextK, m: 12 }, body: {} }).catch(() => {});
-      toast('Lineup ready - ' + kept.length + ' color' + (kept.length === 1 ? '' : 's'));
-      $('pv').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+      toast('Lineup ready - ' + kept.length + ' render' + (kept.length === 1 ? '' : 's'));
+      go(4);
     } catch (e) { toast(e.message || String(e), true); }
     finally { $('cl-make').disabled = false; }
   };
-  if (S.clips.length) K.confirm('Replace the <span>shots</span>?', 'The lineup takes the place of the ' + S.clips.length + ' shot' + (S.clips.length === 1 ? '' : 's') + ' in the reel now. Your footage stays.', go, { okText: 'Make the Lineup' });
-  else go();
+  if (S.clips.length && S.kind !== 'color') K.confirm('Replace the <span>shots</span>?', 'The lineup takes the place of the ' + S.clips.length + ' shot' + (S.clips.length === 1 ? '' : 's') + ' in the reel now. Your footage stays.', go4, { okText: 'Make the Lineup' });
+  else go4();
 }
 $('cl-go').addEventListener('click', clRender);
 $('cl-make').addEventListener('click', clMake);
-renderClPhotos();
+renderKinds(); renderLights(); renderClPhotos();
+go(1);
 
 window.XLStudio = {
   build: XL_STUDIO_BUILD, S, plan: () => plan(), addFiles, addMusic, exportReel, setTpl, autoEdit, applyPlan, srcBoxToOut, planFromState,
   get lastBlob() { return lastBlob; }, get T() { return T; }, get playing() { return playing; }, seekTo,
-  get proj() { return PROJ; }, setCut, setLook, mediaRect, CL, clRender, clMake, projState, autosaveTick, openProject, resetStudio, idbKeys, drawFrame, pickVideoCodec, pickAudioCodec
+  get proj() { return PROJ; }, setCut, setLook, mediaRect, CL, clRender, clMake, go, setKind, addColor, researchAll, jobNote, renderColors, renderFilms,
+  showAll() { document.body.classList.add('st-all'); document.querySelectorAll('details.memory').forEach(d => { d.open = true; }); }, get step() { return S.step; }, projState, autosaveTick, openProject, resetStudio, idbKeys, drawFrame, pickVideoCodec, pickAudioCodec
 };
 })();
 </script>

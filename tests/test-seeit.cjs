@@ -24,7 +24,7 @@ async function open(b, vp, mobile) {
   await page.route('https://fonts.gstatic.com/**', r => r.fulfill({ contentType: 'font/ttf', body: fs.readFileSync(BEBAS) }));
   await page.route('https://static.wixstatic.com/**', r => r.fulfill({ contentType: 'image/png', body: fs.readFileSync(LOGO_PNG) }));
   await page.goto('file://' + FILE);
-  await page.waitForFunction(() => window.XLStudio);
+  await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   await page.setInputFiles('#file-clips', [path.join(FIX, 'clipA-landscape.mp4'), path.join(FIX, 'clipB-portrait.mp4')]);
   await page.waitForFunction(() => document.querySelectorAll('.clip').length === 2, null, { timeout: 30000 });
   await page.waitForTimeout(400);
@@ -66,7 +66,7 @@ const errors = [];
   const tplOn = await shown(ph);
   check(7, (await ph.evaluate(() => window.XLStudio.S.tpl)) === 'reveal' && tplOn, 'template applied at once and See It offered');
   // scrolling back up by hand clears it - it does not come back on the way down
-  await ph.evaluate(() => { document.getElementById('scroller').scrollTop = 0; });
+  await ph.evaluate(() => { document.getElementById('pv').scrollIntoView({ block: 'center' }); });
   await ph.waitForTimeout(500);
   const upHidden = !(await shown(ph));
   await ph.evaluate(() => document.querySelector('#tpl-seg').scrollIntoView({ block: 'center' }));

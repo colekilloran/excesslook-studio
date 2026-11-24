@@ -22,7 +22,7 @@ async function open(b, vp, mobile, errors) {
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '' }));
   await page.route('https://static.wixstatic.com/**', r => r.fulfill({ contentType: 'image/png', body: fs.readFileSync(path.join(__dirname, '..', 'vendor', 'logo.png')) }));
   await page.goto('file://' + FILE);
-  await page.waitForFunction(() => window.XLStudio);
+  await page.waitForFunction(() => window.XLStudio && (window.XLStudio.showAll(), true));
   await page.setInputFiles('#file-clips', [A, B]);
   await page.waitForFunction(() => document.querySelectorAll('.clip').length === 2, null, { timeout: 30000 });
   return page;

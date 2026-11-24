@@ -273,7 +273,7 @@ await C.handleApi({ method: 'POST', op: 'cl-drop', query: { job: 'cj1', n: '4', 
 check(68, /OPENAI_API_KEY is not set/.test(st2.json.renders[0].error) && ![...cs.m.keys()].some(k => k.startsWith('cl/cj1/')), 'no key says so; cl-drop clears the job');
 
 // 69-71 SC1h swatch photos - "it just makes a slide show of the car and then the ppf color i took a picture of"
-check(69, C.CORE_BUILD === 'SC1h-2026-11-23-swatch', 'core ' + C.CORE_BUILD);
+check(69, /^SC1[h-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const sws = fakeStore(), swCalls = [];
 await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'sw1', i: '0' }, body: { jpg: 'QUJD'.repeat(100), w: 1200, h: 1600 }, store: sws, env });
 await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'sw1', i: '4' }, body: { jpg: 'REVG'.repeat(100), w: 800, h: 800 }, store: sws, env });
@@ -285,6 +285,39 @@ const swc = swCalls.find(c => /XPEL Stealth/.test(c.prompt)), plain = swCalls.fi
 check(70, swc && swc.imgs === 2 && swc.one === 0 && /exact color, finish and sheen of the wrap or paint protection film shown in the second image/.test(swc.prompt) && /called XPEL Stealth/.test(swc.prompt) && swc.size === '1024x1536'
   && plain && plain.imgs === 0 && plain.one === 1 && /Satin Black as a professional vinyl wrap/.test(plain.prompt), 'a swatch photo goes as the second image and the prompt matches it; a typed color stays one image');
 check(71, sst.json.renders[0].status === 'done' && sst.json.renders[1].status === 'done' && sst.json.renders[3].status === 'error' && /swatch photo did not arrive/.test(sst.json.renders[3].error), 'an unnamed swatch still renders; a missing swatch says so');
+
+// 72-79 SC1i film research - "the ppf colors are crucial that they are an exact match"
+check(72, C.CORE_BUILD === 'SC1i-2026-11-24-filmmatch', 'core ' + C.CORE_BUILD);
+const fr = C.filmRequest({ brand: '3M', line: '2080', name: 'Satin Dark Grey', code: 'S261', finish: 'satin', swatch: 'QUJD'.repeat(50) }, env);
+check(73, fr.tools[0].type === 'web_search_20250305' && fr.tools[0].name === 'web_search' && fr.tools[1].name === 'submit_film' && fr.tool_choice.type === 'auto'
+  && fr.messages[0].content[0].type === 'image' && /Color code: S261/.test(fr.messages[0].content.slice(-1)[0].text) && /manufacturer/.test(fr.system) && /Never invent a code/.test(fr.system), 'research request: web search + submit_film, the sample photo, the code');
+const fsStore = fakeStore(), fcalls = [];
+const filmFake = async (url, opt) => { const b = JSON.parse(opt.body); fcalls.push(b);
+  if (fcalls.length === 1) return { ok: true, status: 200, text: async () => JSON.stringify({ stop_reason: 'pause_turn', content: [{ type: 'server_tool_use', id: 's1', name: 'web_search', input: { query: '3M 2080 S261' } }, { type: 'web_search_tool_result', tool_use_id: 's1', content: [] }] }) };
+  return { ok: true, status: 200, text: async () => JSON.stringify({ stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't1', name: 'submit_film', input: {
+    brand: '3M', product_line: '2080', color_name: 'Satin Dark Grey', code: '2080-S261', film_type: 'vinyl wrap', finish: 'satin', base_color: 'dark charcoal grey, neutral', hex: { highlight: '6a6d70', mid: '#45484B', shadow: 'zzz' },
+    flake: { present: false }, lighting: { sun: 'lifts to a soft mid grey', shade: 'deep charcoal' }, render_notes: 'Even satin sheen, soft broad highlights.', confidence: 'exact',
+    sources: [{ title: '3M 2080 colors', url: 'https://www.3m.com/2080' }, { title: 'bad', url: 'javascript:x' }] } }] }) };
+};
+await C.runFilm({ body: { id: 'fm1', brand: '3M', line: '2080', name: 'Satin Dark Grey', code: 'S261' }, store: fsStore, fetchImpl: filmFake, env });
+const fg = await C.handleApi({ method: 'GET', op: 'film', query: { id: 'fm1' }, store: fsStore, env });
+const fsp = fg.json.spec;
+check(74, fg.json.status === 'done' && fcalls.length === 2 && fcalls[1].messages.length === 2 && fcalls[1].messages[1].role === 'assistant' && fcalls[1].messages[1].content[0].type === 'server_tool_use' && fg.json.searches === 1,
+  'a paused search turn is handed back unchanged, then the spec arrives');
+check(75, fsp.code === '2080-S261' && fsp.finish === 'satin' && fsp.hex.highlight === '#6A6D70' && fsp.hex.mid === '#45484B' && fsp.hex.shadow === '' && fsp.sources.length === 1 && fsp.confidence === 'exact' && fsp.clear === false, 'spec checked: hex normalized, bad hex and bad links dropped');
+const fe = fakeStore();
+await C.runFilm({ body: { id: 'fm2', brand: 'X' }, store: fe, fetchImpl: async () => ({ ok: false, status: 529, text: async () => JSON.stringify({ error: { message: 'Overloaded' } }) }), env });
+await C.runFilm({ body: { id: 'fm3', brand: 'X' }, store: fe, fetchImpl: filmFake, env: { STUDIO_PASSCODE: env.STUDIO_PASSCODE } });
+check(76, /529: Overloaded/.test((await fe.get('film/fm2', { type: 'json' })).error) && /ANTHROPIC_API_KEY is not set/.test((await fe.get('film/fm3', { type: 'json' })).error), 'errors are stored for the page');
+const p1 = C.recolorPrompt('3M 2080 Satin Dark Grey', false, fsp, 'sun');
+check(77, /Film details \(researched - match them exactly\): 3M 2080 Satin Dark Grey \(code 2080-S261\)/.test(p1) && /satin finish/.test(p1) && /#45484B/.test(p1) && /bright direct midday sun/.test(p1) && /Even satin sheen/.test(p1), 'the render prompt carries the researched spec and the lighting');
+const clearSpec = C.validateFilm({ brand: 'XPEL', product_line: 'Stealth', color_name: 'Stealth', film_type: 'clear PPF', finish: 'satin', base_color: 'clear', render_notes: 'satin sheen over paint', confidence: 'exact' });
+const p2 = C.recolorPrompt('XPEL Stealth', false, clearSpec, 'shade');
+check(78, clearSpec.clear && /Keep the paint color exactly as it is; change only the surface sheen/.test(p2) && /open shade/.test(p2), 'a clear film keeps the paint and only changes the sheen');
+const rs3 = fakeStore(), oa3 = [];
+await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'lj', i: '0' }, body: { jpg: 'QUJD'.repeat(100), w: 1600, h: 1200 }, store: rs3, env });
+await C.runRecolor({ body: { job: 'lj', renders: [{ k: 0, src: 0, color: 'Satin Dark Grey', spec: fsp, light: 'night' }, { k: 1, src: 0, color: 'x', light: 'disco' }] }, store: rs3, fetchImpl: async (u, o) => { oa3.push(o.body.get('prompt')); return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'QUJD' }] }) }; }, env: envImg });
+check(79, /night under street and shop lights/.test(oa3.find(x => /Dark Grey/.test(x))) && /2080-S261/.test(oa3.find(x => /Dark Grey/.test(x))) && !/Relight/.test(oa3.find(x => !/Dark Grey/.test(x))), 'renders pass the spec and light through; an unknown light is ignored');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
