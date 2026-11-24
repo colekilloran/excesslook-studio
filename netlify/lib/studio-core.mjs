@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1k-2026-11-24-colorcard';
+export const CORE_BUILD = 'SC1l-2026-11-24-photolight';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -609,7 +609,7 @@ export function finishOf(color) {
   if (/metallic|pearl|flake/.test(c)) return 'gloss metallic finish with fine metal flake';
   return 'high gloss finish with crisp reflections, like fresh paint';
 }
-export function recolorPrompt(color, swatch, spec, light) {
+export function recolorPrompt(color, swatch, spec, light, photoLight) {
   const col = clean(color, 80);
   if (spec && (spec.clear || /^clear\b/i.test(String(spec.color_name || '')))) {
     // clear film keeps the car's own paint: only the sheen changes
@@ -620,7 +620,8 @@ export function recolorPrompt(color, swatch, spec, light) {
   /* SC1h - Cole photographed the film itself: "its not actually making the car the new color. it just makes a
      slide show of the car and then the ppf color i took a picture of". A swatch photo rides along as the second
      image and the edit matches it exactly. */
-  const specTxt = spec ? ' Film details (researched - match them exactly): ' + filmText(spec) + '.' : '';
+  const specTxt = (spec ? ' Film details (researched - match them exactly): ' + filmText(spec) + '.' : '')
+    + (swatch && PHOTO_LIGHT[photoLight] ? ' ' + PHOTO_LIGHT[photoLight] : '');
   const what = swatch
     ? 'the exact color, finish and sheen of the wrap or paint protection film shown in the second image (a photo of a sample of the film' + (col ? ', called ' + col : '') + ') - match its hue, brightness, gloss or satin or matte level and any metallic flake or texture; ignore everything else in the second image'
     : col + ' as a professional ' + (spec && /ppf|protection/i.test(spec.film_type || '') ? 'color paint protection film' : 'vinyl wrap') + ', ' + (spec && spec.finish ? spec.finish + ' finish' : finishOf(col));
@@ -640,6 +641,16 @@ export const LIGHTS = {
   golden: 'Relight the scene as golden hour, low warm sun from the side: long warm highlights along the body lines.',
   night: 'Relight the scene as night under street and shop lights: dark surroundings, pools of light and specular streaks on the panels.',
   studio: 'Relight the scene as a detailing studio: long overhead LED light bars reflected as clean lines along the panels.'
+};
+/* SC1l - Cole: "I need to be able to tell the studio that the picture of the color card is being taken in sunlight,
+   studio light, overcast light or at night so it knows how to read the color better. The last grey color I did came
+   out looking lighter than the actual color card and I took the color card photo in direct sunlight." */
+export const PHOTO_LIGHT = {
+  sun: 'The sample photo was taken in DIRECT SUNLIGHT. Sun makes a sample look lighter, brighter and less saturated than the film really is, and gloss chips pick up white glare - the film\'s true color is DARKER and richer than it looks in that photo; greys and blacks especially read too light. Correct for that.',
+  shade: 'The sample photo was taken in open shade - close to the film\'s true color, at most a touch cooler than it really is.',
+  overcast: 'The sample photo was taken on an overcast day - soft, slightly cool light; the color is close to true but a little flatter and duller than it really is.',
+  studio: 'The sample photo was taken under shop / studio LED lights - they can shift the color warm or cool and add hard reflections; trust its hue only roughly and lean on the maker\'s data.',
+  night: 'The sample photo was taken at night under artificial light - its color is unreliable; lean on the maker\'s data and the color name, not the photo.'
 };
 export const LIGHT_NAMES = { sun: 'In the sun', shade: 'In the shade', overcast: 'Overcast', golden: 'Golden hour', night: 'At night', studio: 'Studio lights' };
 export function filmText(sp) {
@@ -671,7 +682,7 @@ async function recolorOne({ job, r, store, fetchImpl, env }) {
     fd.append('model', env.OPENAI_IMAGE_MODEL || IMAGE_MODEL);
     const ref = r.ref >= 0 ? await store.get(clKey(job, 'src', r.ref), { type: 'json' }) : null;
     if (r.ref >= 0 && !(ref && ref.jpg)) throw new Error('The swatch photo did not arrive - try again');
-    fd.append('prompt', recolorPrompt(r.color, !!ref, r.spec, r.light) + (r.extra ? ' ' + clean(r.extra, 300) : ''));
+    fd.append('prompt', recolorPrompt(r.color, !!ref, r.spec, r.light, r.photoLight) + (r.extra ? ' ' + clean(r.extra, 300) : ''));
     const blob = b64 => new Blob([Buffer.from(b64, 'base64')], { type: 'image/jpeg' });
     if (ref) { fd.append('image[]', blob(src.jpg), 'car.jpg'); fd.append('image[]', blob(ref.jpg), 'swatch.jpg'); }
     else fd.append('image', blob(src.jpg), 'car.jpg');
@@ -695,7 +706,7 @@ export async function runRecolor({ body, store, fetchImpl, env }) {
   const job = safeId(body && body.job);
   const list = (Array.isArray(body && body.renders) ? body.renders : []).slice(0, 120)
     .map(r => ({ k: Math.round(Number(r.k)), src: Math.round(Number(r.src)), ref: r.ref == null ? -1 : Math.round(Number(r.ref)), color: clean(r.color, 80), extra: clean(r.extra, 300),
-      spec: r.spec && typeof r.spec === 'object' ? validateFilm(r.spec) : null, light: LIGHTS[r.light] ? r.light : '' }))
+      spec: r.spec && typeof r.spec === 'object' ? validateFilm(r.spec) : null, light: LIGHTS[r.light] ? r.light : '', photoLight: PHOTO_LIGHT[r.photoLight] ? r.photoLight : '' }))
     .filter(r => r.k >= 0 && r.k < 400 && r.src >= 0 && r.src < 12 && r.ref < 12 && (r.color || r.ref >= 0));
   if (!job || !list.length) return { ok: false, error: 'nothing to render' };
   if (!env.OPENAI_API_KEY) {
@@ -761,7 +772,8 @@ export function validateFilm(sp) {
 }
 export function filmRequest(body, env) {
   const ask = ['Brand: ' + clean(body.brand, 40), 'Product line: ' + clean(body.line, 60), 'Color name: ' + clean(body.name, 60), 'Color code: ' + clean(body.code, 40),
-    'Owner says the finish is: ' + (clean(body.finish, 30) || 'not sure'), body.notes ? 'Owner notes: ' + clean(body.notes, 300) : ''].filter(Boolean).join('\n');
+    'Owner says the finish is: ' + (clean(body.finish, 30) || 'not sure'), body.notes ? 'Owner notes: ' + clean(body.notes, 300) : '',
+    body.swatch && PHOTO_LIGHT[body.photoLight] ? PHOTO_LIGHT[body.photoLight] + ' Give the hex values and base color for the film itself in open shade, not as the photo shows it.' : ''].filter(Boolean).join('\n');
   const content = [];
   if (body.swatch && /^[A-Za-z0-9+/=]+$/.test(String(body.swatch).slice(0, 200))) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: body.swatch } }, { type: 'text', text: 'Above: the owner\'s photo of the sample.' });
   content.push({ type: 'text', text: 'Research this film so a render can match it exactly:\n' + ask });

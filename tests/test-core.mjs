@@ -322,7 +322,7 @@ check(79, /night under street and shop lights/.test(oa3.find(x => /Dark Grey/.te
 check(80, /^SC1[j-z]-/.test(C.CORE_BUILD) && /paltrixppf-site\.pages\.dev/.test(C.filmRequest({ brand: 'Paltrix' }, env).system) && /P701G = Color PPF, color 701/.test(C.filmRequest({}, env).system), 'Paltrix: their site and code format are in the research brief');
 
 // 81-85 SC1k color cards - "i only have sample color cards for the brands of all the colors"
-check(81, C.CORE_BUILD === 'SC1k-2026-11-24-colorcard', 'core ' + C.CORE_BUILD);
+check(81, /^SC1[k-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const ks = fakeStore(), kcalls = [];
 const putOk = await C.handleApi({ method: 'POST', op: 'img-put', query: { id: 'k1i' }, body: { jpg: 'QUJD'.repeat(100) }, store: ks, env });
 const putBad = await C.handleApi({ method: 'POST', op: 'img-put', query: { id: 'k1i' }, body: { jpg: '<x>' }, store: ks, env });
@@ -344,6 +344,19 @@ const fs2 = fakeStore(), fc2 = [];
 await C.handleApi({ method: 'POST', op: 'img-put', query: { id: 'sw9' }, body: { jpg: 'REVG'.repeat(100) }, store: fs2, env });
 await C.runFilm({ body: { id: 'f9', brand: 'Paltrix', code: 'P701G', swatchId: 'sw9' }, store: fs2, fetchImpl: async (u, o) => { fc2.push(JSON.parse(o.body)); return filmFake(u, o); }, env });
 check(85, /did not arrive/.test(k2.json.error) && fc2[0].messages[0].content[0].type === 'image' && fc2[0].messages[0].content[0].source.data === 'REVG'.repeat(100), 'a missing photo says so; film research reads its sample photo by id');
+
+// 86-89 SC1l photo light - "I took the color card photo in direct sunlight" and the grey came out lighter
+check(86, C.CORE_BUILD === 'SC1l-2026-11-24-photolight', 'core ' + C.CORE_BUILD);
+const frSun = C.filmRequest({ brand: 'X', swatch: 'QUJD'.repeat(60), photoLight: 'sun' }, env).messages[0].content.map(x => x.text || '').join(' ');
+const frNone = C.filmRequest({ brand: 'X', photoLight: 'sun' }, env).messages[0].content.map(x => x.text || '').join(' ');
+check(87, /DIRECT SUNLIGHT/.test(frSun) && /DARKER/.test(frSun) && /open shade, not as the photo shows it/.test(frSun) && !/SUNLIGHT/.test(frNone), 'research is told a sun-lit sample photo reads too light (only when there is a photo)');
+check(88, /DIRECT SUNLIGHT/.test(C.recolorPrompt('Grey', true, null, 'shade', 'sun')) && !/SUNLIGHT/.test(C.recolorPrompt('Grey', false, null, 'shade', 'sun')) && /night under artificial/.test(C.recolorPrompt('Grey', true, null, '', 'night')) && !/sample photo was taken/.test(C.recolorPrompt('Grey', true, null, '', 'disco')),
+  'renders are told how the sample photo was lit; no swatch or an unknown light adds nothing');
+const oa4 = [], rs4 = fakeStore();
+await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'pj', i: '0' }, body: { jpg: 'QUJD'.repeat(100), w: 1600, h: 1200 }, store: rs4, env });
+await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'pj', i: '1' }, body: { jpg: 'REVG'.repeat(100), w: 600, h: 600 }, store: rs4, env });
+await C.runRecolor({ body: { job: 'pj', renders: [{ k: 0, src: 0, color: 'Nardo Grey', ref: 1, photoLight: 'sun' }] }, store: rs4, fetchImpl: async (u, o) => { oa4.push(o.body.get('prompt')); return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'QUJD' }] }) }; }, env: envImg });
+check(89, oa4.length === 1 && /Nardo Grey/.test(oa4[0]) && /DIRECT SUNLIGHT/.test(oa4[0]), 'a render job with a sample photo carries its photo light through to the image model');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);

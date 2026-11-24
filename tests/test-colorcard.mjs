@@ -117,6 +117,7 @@ try {
       nm + ': the card is read - every chip boxed on the photo and listed with its printed name and code; nothing picked yet', sh);
     await page.click('#card-wrap .card-box[data-chip="0"]');
     await page.click('.card-row[data-chip="1"]');
+    await page.click('#card-light [data-plight="shade"]');
     check(nm === 'ipad' ? 3 : 13, (await page.evaluate(() => document.getElementById('card-add').textContent)) === 'Add 2 Colors', nm + ': tap a chip on the photo or in the list to pick it');
     await page.screenshot({ path: path.join(SHOTS, 'colorcard-sheet-' + nm + '.png') });
     await page.click('#card-add');

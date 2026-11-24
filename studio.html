@@ -678,6 +678,10 @@ input[type=range].xr::-moz-range-thumb{width:20px;height:20px;border-radius:10px
 .trim{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:4px 10px;margin-top:10px}
 .trim span{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
 .trim em{font-style:normal;font-size:12px;font-weight:700;color:var(--white);font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.clip-text{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.clip-text .xl-f{flex:1 1 220px;margin-bottom:0}
+.clip-text .xl-f input{padding:9px 11px;font-size:14px;font-weight:700}
+.clip-text .more-chips{margin:0}
 .clip-opts{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .clip-opts .xl-f{flex:1;min-width:140px;margin-bottom:0}
 .clip-opts .xl-f input{padding:9px 11px;font-size:14px}
@@ -847,6 +851,11 @@ body.k-edit [data-kind="edit"],body.k-color [data-kind="color"]{display:block}
 .colr-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .colr-grid .xl-f{margin:0}
 .colr-sw{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.plight{margin:12px 0 4px}
+.plight-t{font:600 12px Montserrat,sans-serif;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.plight-s{font:500 12px Montserrat,sans-serif;color:var(--dim);margin-top:6px}
+.plight-s.need{color:#F5A524}
+.colr .plight{margin-top:10px}
 .colr-sw img{width:48px;height:48px;border-radius:10px;object-fit:cover;border:2px solid #5BC0EB}
 .colr-sw .xl-add{margin-left:0}
 .colr .more-chips{margin-top:10px}
@@ -978,6 +987,7 @@ details.memory summary::-webkit-details-marker{display:none}
   <div class="pj-t">PICK THE <span>COLORS</span></div>
   <div class="pj-sub" id="card-sub">Tap each color you want in this reel.</div>
   <div class="card-wrap" id="card-wrap"></div>
+  <div class="plight" id="card-light"><div class="plight-t">This card photo was taken in</div><div class="more-chips" id="card-light-chips"></div><div class="plight-s" id="card-light-s">Pick one - sun makes the chips look lighter than the film really is.</div></div>
   <div class="card-list" id="card-list"></div>
   <div class="card-foot"><button class="xl-btn ghost press" type="button" id="card-all">Select All</button><button class="xl-btn gold press" type="button" id="card-add" disabled>Add Colors</button></div>
 </div>
@@ -2659,7 +2669,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1m-2026-11-24-colorcard';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1n-2026-11-24-photolight';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -3266,6 +3276,12 @@ function renderClips() {
         : '<input type="range" class="xr" data-a="in" min="0" max="' + maxT.toFixed(2) + '" step="0.05" value="' + c.inT.toFixed(2) + '"><em class="v-in">' + c.inT.toFixed(1) + 's</em>'
           + '<span>End</span><input type="range" class="xr" data-a="out" min="0" max="' + maxT.toFixed(2) + '" step="0.05" value="' + c.outT.toFixed(2) + '"><em class="v-out">' + c.outT.toFixed(1) + 's</em>')
       + '</div>'
+      /* ST1n - Cole: "I also need to be able to edit the text on every slide. The intro text did not allow me to edit it."
+         The on-screen text was behind More; now it sits on every shot card. */
+      + '<div class="clip-text">'
+      + '<div class="xl-f"><input data-a="text" maxlength="70" placeholder="On-screen text (none)" value="' + esc(c.text || '') + '" aria-label="On-screen text for shot ' + (i + 1) + '"></div>'
+      + chips('tpos', [['top', 'Top'], ['center', 'Middle'], ['bottom', 'Bottom']], c.textPos || 'center')
+      + '</div>'
       + '<div class="clip-opts">'
       + '<div class="xl-f"><input data-a="label" maxlength="18" placeholder="Label (e.g. BEFORE)" value="' + esc(c.label) + '" aria-label="Label"></div>'
       + (c.kind === 'video' ? '<button class="chipbtn press' + (c.audio ? ' on' : '') + '" data-a="audio">' + (c.audio ? IC.sound + 'Sound' : IC.mute + 'Muted') + '</button>' : '')
@@ -3280,7 +3296,7 @@ function renderClips() {
   K.pressAll(host);
 }
 /* ST1f per-shot controls: text, speed, motion, reframe */
-function shotTweaked(c) { return !!(c.text || spd(c) !== 1 || (c.motion && c.motion !== 'auto') || (c.zoom || 1) !== 1 || (c.fx != null && c.fx !== 0.5) || (c.fy != null && c.fy !== 0.5)); }
+function shotTweaked(c) { return !!(spd(c) !== 1 || (c.motion && c.motion !== 'auto') || (c.zoom || 1) !== 1 || (c.fx != null && c.fx !== 0.5) || (c.fy != null && c.fy !== 0.5)); }
 function chips(a, list, cur) {
   return '<div class="more-chips">' + list.map(([v, t]) => '<button class="chipbtn press' + (String(cur) === String(v) ? ' on' : '') + '" data-a="' + a + '" data-v="' + v + '" type="button">' + t + '</button>').join('') + '</div>';
 }
@@ -3288,9 +3304,6 @@ function moreHtml(c) {
   const sp = spd(c), sps = [[0.5, '0.5x'], [1, '1x'], [1.5, '1.5x'], [2, '2x'], [4, '4x'], [8, '8x'], [16, '16x']];
   if (!sps.some(x => x[0] === sp)) sps.push([sp, sp + 'x']);
   return '<div class="more">'
-    + '<div class="more-h">On-screen text</div>'
-    + '<div class="xl-f" style="margin-bottom:8px"><input data-a="text" maxlength="70" placeholder="e.g. IS PPF WORTH IT?" value="' + esc(c.text || '') + '" aria-label="On-screen text"></div>'
-    + chips('tpos', [['top', 'Top'], ['center', 'Center'], ['bottom', 'Bottom']], c.textPos || 'center')
     + (c.kind === 'video' ? '<div class="more-h">Speed' + (sp > 2 ? ' <em class="more-note">time-lapse - plays silent</em>' : '') + '</div>' + chips('speed', sps, sp) : '')
     + '<div class="more-h">Motion</div>' + chips('motion', Object.keys(MOTION_LABEL).map(k => [k, MOTION_LABEL[k]]), c.motion || 'auto')
     + '<div class="more-h">Reframe <button class="more-reset press" data-a="reframe0" type="button">Reset</button></div>'
@@ -3370,7 +3383,10 @@ $('clips').addEventListener('input', e => {
   const c = clipById(card.dataset.id); if (!c) return;
   const a = e.target.dataset.a;
   if (a === 'label') { c.label = e.target.value; dirty(); { const s0 = segOf(c); edited(s0 ? s0.start + 0.001 : 0); } const t = card.querySelector('.xl-row-txt .t'); if (t) t.lastChild.textContent = ' ' + (labelFor({ clip: c, i: S.clips.indexOf(c), n: S.clips.length }) || (c.kind === 'image' ? 'Photo' : 'Video')); return; }
-  if (a === 'text') { c.text = e.target.value.slice(0, 70); dirty(); const s0 = segOf(c); if (s0 && !(T >= s0.start && T < s0.start + s0.dur)) seekTo(s0.start + Math.min(0.5, s0.dur / 2)); edited(s0 ? s0.start + 0.001 : 0); return; }
+  /* ST1n - the text fades in over its first 0.15s and out over its last 0.12s; the playhead sits at 0:00 on step 4, so
+     editing the intro used to redraw a frame where its text is invisible ("The intro text did not allow me to edit it").
+     Park the playhead where the text is fully shown. */
+  if (a === 'text') { c.text = e.target.value.slice(0, 70); setPlaying(false); dirty(); const s0 = segOf(c); if (s0 && !(T >= s0.start + 0.2 && T < s0.start + s0.dur - 0.15)) seekTo(s0.start + Math.min(0.5, s0.dur / 2)); edited(s0 ? s0.start + 0.001 : 0); return; }
   if (a === 'zoom' || a === 'fx' || a === 'fy') {
     const v = parseFloat(e.target.value);
     c[a] = a === 'zoom' ? clamp(v, 1, 3) : clamp(v, 0, 1);
@@ -4111,7 +4127,7 @@ function projState() {
     v: 1, footage, shots, tpl: S.tpl, cut: S.cut, look: Object.assign({}, S.look), title: S.title, service: S.service, cta: S.cta, tag: S.tag, music: m,
     note: $('ai-note').value,
     kind: S.kind, lights: S.lights.slice(),
-    colors: S.colors.map(c => ({ brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, spec: c.spec, sig: c.spec ? colorSig(c) : '', swatches: c.swatches.map(w => ({ key: w.key, name: w.name, thumb: w.thumb })) })),
+    colors: S.colors.map(c => ({ brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, photoLight: c.photoLight || '', spec: c.spec, sig: c.spec ? colorSig(c) : '', swatches: c.swatches.map(w => ({ key: w.key, name: w.name, thumb: w.thumb })) })),
     ai: (S.plan || review) ? { plan: S.plan || null, usage: S.usage || null, why: $('rev-why').textContent, caption: $('rev-cap').value,
       tags: $('rev-tags').value, notes: $('rev-notes').value, meta: $('rev-meta').textContent } : null,
     len: Math.round(plan().total * 100) / 100
@@ -4260,7 +4276,7 @@ async function restoreProject(p, quiet) {
         const f = fileOf(await idbGet(w.key), w);
         sw.push({ key: w.key, name: w.name, thumb: w.thumb || '', jpg: f ? (await fileThumb(f, 1024)).split(',')[1] : '' });
       }
-      addColor({ brand: c.brand || '', line: c.line || '', name: c.name || '', code: c.code || '', finish: c.finish || '', spec: c.spec || null, swatches: sw, research: c.spec ? 'done' : 'idle' });
+      addColor({ brand: c.brand || '', line: c.line || '', name: c.name || '', code: c.code || '', finish: c.finish || '', photoLight: c.photoLight || '', spec: c.spec || null, swatches: sw, research: c.spec ? 'done' : 'idle' });
       const nc = S.colors[S.colors.length - 1]; nc.sig = c.spec ? colorSig(nc) : '';
     }
     renderColors(); renderLights();
@@ -4471,10 +4487,18 @@ document.addEventListener('click', e => {
 
 /* ── PPF / vinyl colors (step 2) ── */
 let colorUid = 0;
+/* ST1n - Cole: "I need to be able to tell the studio that the picture of the color card is being taken in sunlight,
+   studio light, overcast light or at night so it knows how to read the color better." Sent with research and renders. */
+const PHOTO_LIGHTS = [['sun', 'Sunlight'], ['shade', 'Shade'], ['overcast', 'Overcast'], ['studio', 'Studio light'], ['night', 'Night']];
+const PHOTO_LIGHT_TIP = { sun: 'Sun makes it look lighter - the studio will read it darker.', shade: 'Closest to the true color.', overcast: 'A little flat - the studio corrects for it.', studio: 'Shop lights shift the color - the studio leans on the maker\'s data.', night: 'Night photos are unreliable - the studio leans on the maker\'s data.' };
+function photoLightHtml(cur, a, title) {
+  return '<div class="plight"><div class="plight-t">' + title + '</div>' + chips(a, PHOTO_LIGHTS, cur)
+    + '<div class="plight-s' + (cur ? '' : ' need') + '">' + (cur ? PHOTO_LIGHT_TIP[cur] : 'Pick one so the color is read right.') + '</div></div>';
+}
 const FINISHES = [['', 'Not sure'], ['gloss', 'Gloss'], ['satin', 'Satin'], ['matte', 'Matte'], ['metallic', 'Metallic'], ['color shift', 'Color shift'], ['chrome', 'Chrome'], ['clear', 'Clear PPF']];
 function colorName(c) { return [c.brand, c.line, c.name].filter(Boolean).join(' ') || (c.spec && c.spec.color_name) || 'Color ' + (S.colors.indexOf(c) + 1); }
-function colorSig(c) { return [c.brand, c.line, c.name, c.code, c.finish, c.swatches.map(w => w.key).join(',')].join('|').toLowerCase(); }
-function addColor(o) { const c = Object.assign({ id: 'c' + (++colorUid), brand: '', line: '', name: '', code: '', finish: '', swatches: [], spec: null, research: 'idle', sig: '', err: '' }, o || {}); S.colors.push(c); renderColors(); return c; }
+function colorSig(c) { return [c.brand, c.line, c.name, c.code, c.finish, c.swatches.map(w => w.key).join(','), c.swatches.length ? (c.photoLight || '') : ''].join('|').toLowerCase(); }
+function addColor(o) { const c = Object.assign({ id: 'c' + (++colorUid), brand: '', line: '', name: '', code: '', finish: '', swatches: [], photoLight: '', spec: null, research: 'idle', sig: '', err: '' }, o || {}); S.colors.push(c); renderColors(); return c; }
 function renderColors() {
   const host = $('colors');
   host.innerHTML = S.colors.map((c, i) => '<div class="colr" data-cid="' + c.id + '">'
@@ -4488,6 +4512,7 @@ function renderColors() {
     + chips('cfin', FINISHES, c.finish)
     + '<div class="colr-sw">' + c.swatches.map((w, j) => '<img alt="Sample photo" width="48" height="48" src="' + w.thumb + '" data-swdel="' + j + '" title="Tap to remove">').join('')
     + '<button class="xl-add press" type="button" data-swadd>' + (c.swatches.length ? '+ Another photo' : '+ Photo of the sample') + '</button></div>'
+    + (c.swatches.length ? photoLightHtml(c.photoLight, 'cplight', 'Sample photo taken in') : '')
     + '</div>').join('');
   K.pressAll(host);
 }
@@ -4505,6 +4530,8 @@ $('colors').addEventListener('click', e => {
   const c = S.colors.find(x => x.id === card.dataset.cid); if (!c) return;
   const f = e.target.closest('[data-a="cfin"]');
   if (f) { c.finish = f.dataset.v; renderColors(); return; }
+  const pl = e.target.closest('[data-a="cplight"]');
+  if (pl) { c.photoLight = pl.dataset.v; renderColors(); dirty(300); return; }
   if (e.target.closest('[data-cdel]')) { const at = S.colors.indexOf(c); S.colors.splice(at, 1); renderColors(); K.toast('Color removed', () => { S.colors.splice(at, 0, c); renderColors(); }); return; }
   if (e.target.closest('[data-swadd]')) { swatchFor = c; $('file-swatch').value = ''; $('file-swatch').click(); return; }
   const d = e.target.closest('[data-swdel]');
@@ -4535,7 +4562,7 @@ $('file-swatch').addEventListener('change', async e => {
    with each chip boxed and numbered - tap the ones for this reel - and each becomes a color card in step 2 with
    brand / line / name / code / finish filled in and its own chip, cut from the photo, as the sample. */
 const CARDBG = '/.netlify/functions/studio-card-background';
-const CARDSCAN = { img: null, url: '', card: null, pick: new Set(), id: '' };
+const CARDSCAN = { img: null, url: '', card: null, pick: new Set(), id: '', light: '' };
 function cardSheet(on) { $('card-veil').classList.toggle('on', on); $('card-sheet').classList.toggle('on', on); if (!on) $('card-sheet').style.transform = ''; }
 K.sheet($('card-sheet'), $('card-grab'), { onClose: () => cardSheet(false) });
 $('card-veil').addEventListener('click', () => cardSheet(false));
@@ -4558,12 +4585,18 @@ function renderCardPick() {
     + '<span class="s">' + esc([x.finish, x.readable ? '' : 'label hard to read - check it'].filter(Boolean).join(' - ')) + '</span></span></button>').join('');
   $('card-list').querySelectorAll('[data-cv]').forEach(cv => { const src = chipCanvas(chips[+cv.dataset.cv].box, 80, 0.12); const x = cv.getContext('2d'); x.drawImage(src, 0, 0, 40, 40); });
   $('card-list').querySelectorAll('.card-row').forEach(r => { const x = chips[+r.dataset.chip]; if (!x.readable) r.querySelector('.s').classList.add('warn'); });
-  const n = CARDSCAN.pick.size;
-  $('card-add').disabled = !n; $('card-add').textContent = n ? 'Add ' + n + ' Color' + (n === 1 ? '' : 's') : 'Add Colors';
+  const n = CARDSCAN.pick.size, L = CARDSCAN.light;
+  $('card-light-chips').innerHTML = PHOTO_LIGHTS.map(([v, t]) => '<button class="chipbtn press' + (L === v ? ' on' : '') + '" data-plight="' + v + '" type="button">' + t + '</button>').join('');
+  $('card-light-s').textContent = L ? PHOTO_LIGHT_TIP[L] : 'Pick one - sun makes the chips look lighter than the film really is.';
+  $('card-light-s').classList.toggle('need', !L && n > 0);
+  $('card-add').disabled = !n || !L; $('card-add').textContent = !n ? 'Add Colors' : !L ? 'Pick the Light First' : 'Add ' + n + ' Color' + (n === 1 ? '' : 's');
+  K.pressAll($('card-light-chips'));
   $('card-all').textContent = n === chips.length ? 'Clear' : 'Select All';
   K.pressAll($('card-list'));
 }
 $('card-sheet').addEventListener('click', e => {
+  const pl = e.target.closest('[data-plight]');
+  if (pl) { CARDSCAN.light = pl.dataset.plight; renderCardPick(); return; }
   const b = e.target.closest('[data-chip]'); if (!b) return;
   const i = +b.dataset.chip; CARDSCAN.pick.has(i) ? CARDSCAN.pick.delete(i) : CARDSCAN.pick.add(i);
   renderCardPick();
@@ -4575,6 +4608,7 @@ $('card-all').addEventListener('click', () => {
 });
 $('card-add').addEventListener('click', async () => {
   const c = CARDSCAN.card; let n = 0;
+  if (!CARDSCAN.light) return;
   for (const i of [...CARDSCAN.pick].sort((a, b) => a - b)) {
     const x = c.chips[i];
     const big = chipCanvas(x.box, 1024, 0.12), small = chipCanvas(x.box, 160, 0.12);
@@ -4583,7 +4617,7 @@ $('card-add').addEventListener('click', async () => {
     const file = new File([blob], nm, { type: 'image/jpeg', lastModified: Date.now() });
     const key = fileKey(file); keepFile(key, file);
     const fin = x.finish === 'clear' ? 'clear' : x.finish;
-    addColor({ brand: c.brand || '', line: c.product_line || '', name: x.name || '', code: x.code || '', finish: fin,
+    addColor({ brand: c.brand || '', line: c.product_line || '', name: x.name || '', code: x.code || '', finish: fin, photoLight: CARDSCAN.light,
       swatches: [{ key, name: nm, thumb: small.toDataURL('image/jpeg', 0.9), jpg: big.toDataURL('image/jpeg', 0.92).split(',')[1] }] });
     n++;
   }
@@ -4616,7 +4650,7 @@ $('file-card').addEventListener('change', async e => {
       if (status === 200 && json && json.status === 'error') throw new Error(json.error || 'The card could not be read');
       if (Date.now() - t0 > 3 * 60000) throw new Error('Reading the card took too long - try again');
     }
-    CARDSCAN.pick = new Set();
+    CARDSCAN.pick = new Set(); CARDSCAN.light = '';
     renderCardPick(); cardSheet(true);
   } catch (er) { toast(er.message || String(er), true); }
   finally { btn.disabled = false; lab.textContent = was; }
@@ -4634,7 +4668,7 @@ async function researchOne(c, force) {
     let swatchId = '';
     if (c.swatches[0] && c.swatches[0].jpg) { swatchId = id + 's'; const up = await api('img-put', { query: { id: swatchId }, body: { jpg: c.swatches[0].jpg } }); if (up.status !== 200) throw new Error((up.json && up.json.error) || 'The sample photo did not upload'); }
     const r = await fetch(FILM, { method: 'POST', headers: { 'x-studio-key': KEY, 'content-type': 'application/json' },
-      body: JSON.stringify({ id, brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, swatchId }) });
+      body: JSON.stringify({ id, brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, swatchId, photoLight: swatchId ? (c.photoLight || '') : '' }) });
     if (!(r.status === 202 || r.ok)) throw new Error('The research would not start (' + r.status + ')');
     const t0 = Date.now();
     for (;;) {
@@ -4847,10 +4881,10 @@ async function clRender() {
     const refs = {};
     for (let j = 0; j < colors.length && j < 8; j++) { const w = colors[j].swatches[0]; if (w && w.jpg) { refs[colors[j].id] = 4 + j; await api('cl-src', { query: { job: CL.job, i: 4 + j }, body: { jpg: w.jpg, w: 1024, h: 1024 } }); } }
     CL.tiles = [];
-    colors.forEach(c => lights.forEach(l => imgs.forEach((f, i) => CL.tiles.push({ k: CL.nextK++, src: i, ref: refs[c.id] != null ? refs[c.id] : null, color: colorName(c), spec: c.spec, light: l, status: 'waiting', keep: true }))));
+    colors.forEach(c => lights.forEach(l => imgs.forEach((f, i) => CL.tiles.push({ k: CL.nextK++, src: i, ref: refs[c.id] != null ? refs[c.id] : null, color: colorName(c), spec: c.spec, light: l, photoLight: refs[c.id] != null ? (c.photoLight || '') : '', status: 'waiting', keep: true }))));
     renderClGrid();
     $('cl-st').textContent = 'Rendering ' + CL.tiles.length + ' - you can keep adjusting settings meanwhile.';
-    await clStart(CL.tiles.map(t => ({ k: t.k, src: t.src, ref: t.ref, color: t.color, spec: t.spec, light: t.light })));
+    await clStart(CL.tiles.map(t => ({ k: t.k, src: t.src, ref: t.ref, color: t.color, spec: t.spec, light: t.light, photoLight: t.photoLight })));
     await clPoll();
   } catch (e) { $('cl-st').textContent = e.message || String(e); $('cl-st').classList.add('err'); toast(e.message || String(e), true); $('cl-prog').classList.remove('on'); }
   finally { $('cl-go').disabled = false; }
@@ -4861,7 +4895,7 @@ async function clReroll(i) {
   if (t.url) URL.revokeObjectURL(t.url);
   Object.assign(t, { k: CL.nextK++, status: 'waiting', url: '', blob: null, error: '', keep: true });
   renderClGrid();
-  try { await clStart([{ k: t.k, src: t.src, ref: t.ref, color: t.color, spec: t.spec, light: t.light }]); clPoll(); }
+  try { await clStart([{ k: t.k, src: t.src, ref: t.ref, color: t.color, spec: t.spec, light: t.light, photoLight: t.photoLight }]); clPoll(); }
   catch (e) { t.status = 'error'; t.error = e.message; renderClGrid(); }
 }
 async function addSource(file) {
