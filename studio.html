@@ -2669,7 +2669,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1n-2026-11-24-photolight';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1o-2026-11-24-paltrixcode';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -4522,6 +4522,9 @@ $('colors').addEventListener('input', e => {
   const i = e.target.closest('[data-cf]'); if (!i) return;
   const c = S.colors.find(x => x.id === i.closest('.colr').dataset.cid); if (!c) return;
   c[i.dataset.cf] = i.value.trim();
+  /* ST1o - a Paltrix code carries its finish (P702S = satin); fill it in when the finish is not set yet */
+  const pm = /paltrix/i.test(c.brand) && String(c.code).toUpperCase().replace(/[\s._\-\/]+/g, '').match(/^P?\d{3}([GMS])/);
+  if (pm && !c.finish && (i.dataset.cf === 'code' || i.dataset.cf === 'brand')) { c.finish = { G: 'gloss', M: 'matte', S: 'satin' }[pm[1]]; const fb = i.closest('.colr').querySelector('[data-a="cfin"][data-v="' + c.finish + '"]'); if (fb) { i.closest('.colr').querySelectorAll('[data-a="cfin"]').forEach(b => b.classList.toggle('on', b === fb)); } }
   i.closest('.colr').querySelector('.colr-top .t').textContent = colorName(c);
   dirty(800);
 });

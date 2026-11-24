@@ -346,7 +346,7 @@ await C.runFilm({ body: { id: 'f9', brand: 'Paltrix', code: 'P701G', swatchId: '
 check(85, /did not arrive/.test(k2.json.error) && fc2[0].messages[0].content[0].type === 'image' && fc2[0].messages[0].content[0].source.data === 'REVG'.repeat(100), 'a missing photo says so; film research reads its sample photo by id');
 
 // 86-89 SC1l photo light - "I took the color card photo in direct sunlight" and the grey came out lighter
-check(86, C.CORE_BUILD === 'SC1l-2026-11-24-photolight', 'core ' + C.CORE_BUILD);
+check(86, /^SC1[l-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const frSun = C.filmRequest({ brand: 'X', swatch: 'QUJD'.repeat(60), photoLight: 'sun' }, env).messages[0].content.map(x => x.text || '').join(' ');
 const frNone = C.filmRequest({ brand: 'X', photoLight: 'sun' }, env).messages[0].content.map(x => x.text || '').join(' ');
 check(87, /DIRECT SUNLIGHT/.test(frSun) && /DARKER/.test(frSun) && /open shade, not as the photo shows it/.test(frSun) && !/SUNLIGHT/.test(frNone), 'research is told a sun-lit sample photo reads too light (only when there is a photo)');
@@ -357,6 +357,26 @@ await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'pj', i: '0' }, 
 await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'pj', i: '1' }, body: { jpg: 'REVG'.repeat(100), w: 600, h: 600 }, store: rs4, env });
 await C.runRecolor({ body: { job: 'pj', renders: [{ k: 0, src: 0, color: 'Nardo Grey', ref: 1, photoLight: 'sun' }] }, store: rs4, fetchImpl: async (u, o) => { oa4.push(o.body.get('prompt')); return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'QUJD' }] }) }; }, env: envImg });
 check(89, oa4.length === 1 && /Nardo Grey/.test(oa4[0]) && /DIRECT SUNLIGHT/.test(oa4[0]), 'a render job with a sample photo carries its photo light through to the image model');
+
+// 90-95 SC1m Paltrix codes - "its saying its not recognizing the code format"
+check(90, C.CORE_BUILD === 'SC1m-2026-11-24-paltrixcode', 'core ' + C.CORE_BUILD);
+const dp = (b, c) => JSON.stringify(C.decodePaltrix(b, c));
+check(91, dp('Paltrix', 'P702S') === '{"code":"P702S","number":"702","finish":"satin","series":"Satin"}' && C.decodePaltrix('paltrix ppf', 'p-702-m').code === 'P702M' && C.decodePaltrix('Paltrix', '702').code === 'P702'
+  && C.decodePaltrix('', 'P701G20260512A12345').finish === 'gloss' && C.decodePaltrix('', '701') === null && C.decodePaltrix('XPEL', 'P701G') === null && C.decodePaltrix('3M', 'S261') === null,
+  'Paltrix codes decode (dashes, lower case, bare number with the brand, full roll serial); other brands are left alone');
+const pq = C.filmRequest({ brand: 'Paltrix', line: 'Color PPF', name: 'Nardo Grey', code: 'P702S' }, env);
+const pqt = pq.messages[0].content.map(x => x.text || '').join(' ');
+check(92, /P702S = Color PPF, color number 702, Satin finish series/.test(pqt) && /format is valid/.test(pqt) && /never call it unrecognized/.test(pq.system) && !/Paltrix code decoded/.test(C.filmRequest({ brand: '3M', code: 'S261' }, env).messages[0].content.map(x => x.text || '').join(' ')),
+  'research is handed the decoded Paltrix code as fact and told never to call the format unrecognized');
+const fs3 = fakeStore();
+await C.runFilm({ body: { id: 'p1', brand: 'Paltrix', name: 'Nardo Grey', code: 'p702s' }, store: fs3, env, fetchImpl: async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't', name: 'submit_film', input: {
+  color_name: 'Nardo Grey', finish: '', base_color: 'flat mid grey', render_notes: 'Satin.', confidence: 'estimate', note: 'Code P702S does not match a recognized format.' } }] }) }) });
+const pz = (await C.handleApi({ method: 'GET', op: 'film', query: { id: 'p1' }, store: fs3, env })).json.spec;
+check(93, pz.code === 'P702S' && pz.finish === 'satin' && pz.brand === 'Paltrix' && !/format/i.test(pz.note) && /does not list P702S online/.test(pz.note),
+  'a "format not recognized" reply is replaced; code, brand and finish come from the decoded code ' + JSON.stringify([pz.code, pz.finish, pz.note]));
+const vc = C.validateCard({ chips: [{ name: 'Nardo Grey', code: 'P 702-S', finish: '', box: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 } }, { name: 'Midnight Sapphire', code: 'P701G', finish: 'satin', box: { x: 0.4, y: 0.1, w: 0.2, h: 0.2 } }] });
+check(94, vc.brand === 'Paltrix' && vc.chips[0].code === 'P702S' && vc.chips[0].finish === 'satin' && vc.chips[1].finish === 'gloss', 'card chips: Paltrix codes cleaned, finish set from the code letter, brand filled in ' + JSON.stringify(vc.chips.map(x => [x.code, x.finish])));
+check(95, /P \+ 3-digit color number \+ G \/ M \/ S/.test(String(C.CARD_BRIEF || '')) , 'card reader brief knows the Paltrix format');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);

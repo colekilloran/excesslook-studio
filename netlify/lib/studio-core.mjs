@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1l-2026-11-24-photolight';
+export const CORE_BUILD = 'SC1m-2026-11-24-paltrixcode';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -748,9 +748,27 @@ const FILM_BRIEF = 'You research automotive wrap and paint protection films for 
   + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com, paltrixppf-site.pages.dev and so on), then installer galleries and reviews for how it really looks on cars. '
   + 'Work out the finish, the base color, any metallic flake (its color and size), any color shift and the angles, and how it reads in sun, shade, overcast and at night. '
   + 'If the owner attached a photo of the sample, use it to confirm and fine-tune the color, but trust the manufacturer\'s data over a photo taken under shop lights. '
-  + 'Paltrix codes read category + color number + finish series, e.g. P701G = Color PPF, color 701 (Midnight Sapphire), Gloss series - search the color number and the finish separately on their site. '
+  + 'Paltrix codes read category + color number + finish series, e.g. P701G = Color PPF, color 701 (Midnight Sapphire), Gloss series (M = Matte, S = Satin). '
+  + 'Paltrix publishes only a few of its colors online, so most valid Paltrix codes cannot be found on the web - a code in that format is VALID: never call it unrecognized, unknown or a bad format. '
+  + 'For a Paltrix color you cannot find online, use the decoded color number and finish, the color name and the owner\'s photo of the Paltrix sample chip (corrected for the light it was taken in) as the source of truth: confidence close with a sample photo, estimate without one. '
   + 'Clear films (like XPEL Stealth or any clear satin / gloss PPF) do not change the paint color - say so with clear = true. '
   + 'Never invent a code. If you cannot find the product, say so in note and set confidence to estimate. Then call submit_film once.';
+/* SC1m - Cole: "its not recognizing paltrix ppf color codes on the color cards" / "its saying its not recognizing the code
+   format". Paltrix codes are P + 3-digit color number + G / M / S finish (their full roll serial adds a batch and serial,
+   P701G20260512A12345). They publish almost none of them online, so research could not find the code and called the
+   format unrecognized. The code is decoded here, handed to research as fact, and a "format" complaint never reaches Cole. */
+const PALTRIX_FIN = { G: ['gloss', 'Gloss'], M: ['matte', 'Matte'], S: ['satin', 'Satin'] };
+export function decodePaltrix(brand, code) {
+  const raw = String(code || '').toUpperCase().replace(/[\s._\-\/]+/g, '');
+  const isBrand = /paltrix/i.test(String(brand || ''));
+  const m = raw.match(/^(P)?(\d{3})([GMS])?(?:\d{8}[A-Z]\d{5})?$/);
+  if (!m || (!isBrand && (String(brand || '').trim() || !(m[1] && m[3])))) return null;
+  const f = m[3] ? PALTRIX_FIN[m[3]] : null;
+  return { code: 'P' + m[2] + (m[3] || ''), number: m[2], finish: f ? f[0] : '', series: f ? f[1] : '' };
+}
+export function paltrixLine(d) {
+  return 'Paltrix code decoded (this is certain, the format is valid): ' + d.code + ' = Color PPF, color number ' + d.number + (d.series ? ', ' + d.series + ' finish series' : ', finish letter not given') + '. Paltrix does not publish most colors online - if you cannot find ' + d.number + ', match from the sample photo and the name.';
+}
 const HEX = /^#?[0-9a-f]{6}$/i;
 export function validateFilm(sp) {
   sp = sp && typeof sp === 'object' ? sp : {};
@@ -773,6 +791,7 @@ export function validateFilm(sp) {
 export function filmRequest(body, env) {
   const ask = ['Brand: ' + clean(body.brand, 40), 'Product line: ' + clean(body.line, 60), 'Color name: ' + clean(body.name, 60), 'Color code: ' + clean(body.code, 40),
     'Owner says the finish is: ' + (clean(body.finish, 30) || 'not sure'), body.notes ? 'Owner notes: ' + clean(body.notes, 300) : '',
+    decodePaltrix(body.brand, body.code) ? paltrixLine(decodePaltrix(body.brand, body.code)) : '',
     body.swatch && PHOTO_LIGHT[body.photoLight] ? PHOTO_LIGHT[body.photoLight] + ' Give the hex values and base color for the film itself in open shade, not as the photo shows it.' : ''].filter(Boolean).join('\n');
   const content = [];
   if (body.swatch && /^[A-Za-z0-9+/=]+$/.test(String(body.swatch).slice(0, 200))) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: body.swatch } }, { type: 'text', text: 'Above: the owner\'s photo of the sample.' });
@@ -805,6 +824,12 @@ export async function runFilm({ body, store, fetchImpl, env }) {
     }
     if (!found) throw new Error('The research did not finish - try again');
     const spec = validateFilm(found);
+    const pd = decodePaltrix(body.brand, body.code);
+    if (pd) {
+      spec.code = spec.code || pd.code; spec.brand = spec.brand || 'Paltrix';
+      if (!spec.finish && pd.finish) spec.finish = pd.finish;
+      if (/recogni[sz]|format|invalid|not a (valid|known)|doesn.t match|unknown code/i.test(spec.note)) spec.note = 'Paltrix does not list ' + pd.code + ' online - the color was matched from your card photo and the name. Check it against the card.';
+    }
     await store.setJSON(key, { status: 'done', spec, searches, at: new Date().toISOString(), core: CORE_BUILD });
     return { ok: true, spec };
   } catch (e) {
@@ -845,9 +870,10 @@ export const CARD_TOOL = {
     required: ['chips']
   }
 };
-const CARD_BRIEF = 'You read photos of wrap and paint protection film sample cards for Excess Look Auto Solutions, a detailing and PPF shop. '
+export const CARD_BRIEF = 'You read photos of wrap and paint protection film sample cards for Excess Look Auto Solutions, a detailing and PPF shop. '
   + 'Find every color chip on the card. For each one, copy the name and code printed next to it exactly as printed - never guess a code that is not printed. '
   + 'Give the box of the colored area itself (not the label, not the card border) as fractions of the photo. Read the brand and product line from the card. '
+  + 'Paltrix chips are coded P + 3-digit color number + G / M / S (gloss / matte / satin), e.g. P701G - copy it as printed and set the finish from that letter. '
   + 'Then call submit_card once.';
 export function validateCard(c) {
   c = c && typeof c === 'object' ? c : {};
@@ -859,7 +885,9 @@ export function validateCard(c) {
     bx.w = Math.min(bx.w, 1 - bx.x); bx.h = Math.min(bx.h, 1 - bx.y);
     return { name: clean(x && x.name, 60), code: clean(x && x.code, 40), finish: fin.includes(x && x.finish) ? x.finish : '', box: bx, readable: !(x && x.readable === false) };
   }).filter(x => (x.name || x.code) && x.box.w > 0.005 && x.box.h > 0.005);
-  return { brand: clean(c.brand, 40), product_line: clean(c.product_line, 60), chips, note: clean(c.note, 300) };
+  const brand = clean(c.brand, 40);
+  chips.forEach(x => { const d = decodePaltrix(brand, x.code); if (d) { x.code = d.code; if (d.finish) x.finish = d.finish; } });
+  return { brand: brand || (chips.some(x => /^P\d{3}[GMS]$/.test(x.code)) ? 'Paltrix' : ''), product_line: clean(c.product_line, 60), chips, note: clean(c.note, 300) };
 }
 export async function runCard({ body, store, fetchImpl, env }) {
   const id = safeId(body && body.id);
