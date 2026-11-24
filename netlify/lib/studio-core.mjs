@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1i-2026-11-24-filmmatch';
+export const CORE_BUILD = 'SC1j-2026-11-24-paltrix';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -720,9 +720,10 @@ export const FILM_TOOL = {
   }
 };
 const FILM_BRIEF = 'You research automotive wrap and paint protection films for Excess Look Auto Solutions, a detailing and PPF shop. '
-  + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com and so on), then installer galleries and reviews for how it really looks on cars. '
+  + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com, paltrixppf-site.pages.dev and so on), then installer galleries and reviews for how it really looks on cars. '
   + 'Work out the finish, the base color, any metallic flake (its color and size), any color shift and the angles, and how it reads in sun, shade, overcast and at night. '
   + 'If the owner attached a photo of the sample, use it to confirm and fine-tune the color, but trust the manufacturer\'s data over a photo taken under shop lights. '
+  + 'Paltrix codes read category + color number + finish series, e.g. P701G = Color PPF, color 701 (Midnight Sapphire), Gloss series - search the color number and the finish separately on their site. '
   + 'Clear films (like XPEL Stealth or any clear satin / gloss PPF) do not change the paint color - say so with clear = true. '
   + 'Never invent a code. If you cannot find the product, say so in note and set confidence to estimate. Then call submit_film once.';
 const HEX = /^#?[0-9a-f]{6}$/i;

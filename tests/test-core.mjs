@@ -287,7 +287,7 @@ check(70, swc && swc.imgs === 2 && swc.one === 0 && /exact color, finish and she
 check(71, sst.json.renders[0].status === 'done' && sst.json.renders[1].status === 'done' && sst.json.renders[3].status === 'error' && /swatch photo did not arrive/.test(sst.json.renders[3].error), 'an unnamed swatch still renders; a missing swatch says so');
 
 // 72-79 SC1i film research - "the ppf colors are crucial that they are an exact match"
-check(72, C.CORE_BUILD === 'SC1i-2026-11-24-filmmatch', 'core ' + C.CORE_BUILD);
+check(72, /^SC1[i-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const fr = C.filmRequest({ brand: '3M', line: '2080', name: 'Satin Dark Grey', code: 'S261', finish: 'satin', swatch: 'QUJD'.repeat(50) }, env);
 check(73, fr.tools[0].type === 'web_search_20250305' && fr.tools[0].name === 'web_search' && fr.tools[1].name === 'submit_film' && fr.tool_choice.type === 'auto'
   && fr.messages[0].content[0].type === 'image' && /Color code: S261/.test(fr.messages[0].content.slice(-1)[0].text) && /manufacturer/.test(fr.system) && /Never invent a code/.test(fr.system), 'research request: web search + submit_film, the sample photo, the code');
@@ -318,6 +318,8 @@ const rs3 = fakeStore(), oa3 = [];
 await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'lj', i: '0' }, body: { jpg: 'QUJD'.repeat(100), w: 1600, h: 1200 }, store: rs3, env });
 await C.runRecolor({ body: { job: 'lj', renders: [{ k: 0, src: 0, color: 'Satin Dark Grey', spec: fsp, light: 'night' }, { k: 1, src: 0, color: 'x', light: 'disco' }] }, store: rs3, fetchImpl: async (u, o) => { oa3.push(o.body.get('prompt')); return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'QUJD' }] }) }; }, env: envImg });
 check(79, /night under street and shop lights/.test(oa3.find(x => /Dark Grey/.test(x))) && /2080-S261/.test(oa3.find(x => /Dark Grey/.test(x))) && !/Relight/.test(oa3.find(x => !/Dark Grey/.test(x))), 'renders pass the spec and light through; an unknown light is ignored');
+
+check(80, C.CORE_BUILD === 'SC1j-2026-11-24-paltrix' && /paltrixppf-site\.pages\.dev/.test(C.filmRequest({ brand: 'Paltrix' }, env).system) && /P701G = Color PPF, color 701/.test(C.filmRequest({}, env).system), 'Paltrix: their site and code format are in the research brief');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
