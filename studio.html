@@ -598,7 +598,7 @@ body.rm .xl-act.urgent{animation:none}
 
 </style>
 <style>
-/* ══ REEL STUDIO - ST1i ══════════════════════════════════════════════════════
+/* ══ REEL STUDIO - ST1j ══════════════════════════════════════════════════════
    Raw footage in, finished reel out. An AI editor plans the cut from stills,
    this page renders it. Everything runs on the device: clips are read from
    the files you pick, the reel is drawn on a canvas and encoded by the
@@ -699,6 +699,13 @@ input[type=range].xr::-moz-range-thumb{width:20px;height:20px;border-radius:10px
 .cl-ph.on{border-color:var(--gold)}
 .cl-ph.on img{opacity:1}
 .cl-ph b{position:absolute;right:4px;bottom:3px;font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000}
+.cl-ph i{position:absolute;left:0;right:0;top:0;padding:2px 0;font-style:normal;font-size:8.5px;font-weight:800;letter-spacing:.8px;text-align:center;background:var(--gold);color:#0A0A0A}
+.cl-ph.sw{border-color:#5BC0EB}
+.cl-ph.sw img{opacity:1}
+.cl-ph.sw i{background:#5BC0EB}
+.cl-sw-row{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.cl-sw-row img{width:40px;height:40px;border-radius:9px;object-fit:cover;flex:none;border:2px solid #5BC0EB}
+.cl-sw-row .xl-f{flex:1;margin:0}
 .cl-none{font-size:13px;color:var(--muted);margin:2px 0 12px;line-height:1.45}
 .cl-opts{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 12px}
 .cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:14px}
@@ -959,10 +966,11 @@ body.ai .lockable,body.ai #btn-redo,body.ai #btn-note,body.ai #btn-export{pointe
       <div class="lockable">
       <div class="xl-h2">COLOR <span style="color:var(--gold)">LINEUP</span> <span class="ln"></span></div>
       <div class="cl-card" id="cl">
-        <div class="xl-hint" style="margin-top:0">The same car in every wrap color, cut as a montage. Pick the car photos, list the colors, tap Render. Each render is a few cents on the shop's OpenAI account and is marked COLOR RENDER on the reel.</div>
-        <div class="xl-f" style="margin:12px 0 6px"><label>Car photos (from Footage, up to 4)</label></div>
+        <div class="xl-hint" style="margin-top:0">The same car in every wrap color, cut as a montage. Add the car photos and any photos of the film itself to Footage, tap each photo below to mark it CAR or SWATCH, and/or type color names. Then Render. Each render is a few cents on the shop's OpenAI account and is marked COLOR RENDER on the reel.</div>
+        <div class="xl-f" style="margin:12px 0 6px"><label>Photos from Footage - tap to mark: car (up to 4) / swatch / not used</label></div>
         <div id="cl-photos"></div>
-        <div class="xl-f" style="margin-bottom:0"><label for="cl-colors">Wrap colors, one per line (name the finish)</label>
+        <div id="cl-sw"></div>
+        <div class="xl-f" style="margin-bottom:0"><label for="cl-colors">Colors by name, one per line (name the finish) - optional if you marked swatches</label>
           <textarea id="cl-colors" rows="5" maxlength="1200" placeholder="Gloss Nardo Grey&#10;Satin Black&#10;Matte Military Green&#10;Gloss Miami Blue&#10;Satin Pearl White"></textarea></div>
         <div class="cl-opts">
           <label class="chk"><input type="checkbox" id="cl-hook" checked><span>Open on the real car</span></label>
@@ -2503,7 +2511,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1i-2026-11-23-colorlineup';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1j-2026-11-23-swatch';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -4243,21 +4251,34 @@ $('proj-name').addEventListener('click', () => {
 const CL = { job: '', photos: [], tiles: [], nextK: 0, polling: false, picked: null };
 const RECOLOR = '/.netlify/functions/studio-recolor-background';
 function clImages() { return S.sources.filter(f => f.kind === 'image' && !/^render-/.test(f.name)); }   // renders are not car photos
+/* ST1j - each photo is the CAR, a SWATCH (a photo of the film - matched exactly) or not used. Cole photographed the
+   PPF and got a slideshow; now that photo is the color. A new photo starts as car (up to 4), tap cycles. */
+CL.role = new Map(); CL.swName = new Map();
+const fk = f => f.key || f.name;
+function clRole(f) { return CL.role.get(fk(f)) || ''; }
+function clCars() { return clImages().filter(f => clRole(f) === 'car'); }
+function clSwatches() { return clImages().filter(f => clRole(f) === 'swatch'); }
 function renderClPhotos() {
   const host = $('cl-photos'), imgs = clImages();
-  if (!imgs.length) { host.innerHTML = '<div class="cl-none">Add 1 to 4 photos of the car in Footage first - side, front three-quarter and rear three-quarter work best.</div>'; CL.picked = null; return; }
-  if (!CL.picked) CL.picked = new Set(imgs.slice(0, 4).map(f => f.key || f.name));
-  [...CL.picked].forEach(k => { if (!imgs.some(f => (f.key || f.name) === k)) CL.picked.delete(k); });
-  host.innerHTML = '<div class="cl-photos">' + imgs.map((f, i) => '<button class="cl-ph press' + (CL.picked.has(f.key || f.name) ? ' on' : '') + '" type="button" data-k="' + esc(f.key || f.name) + '" aria-label="Use ' + esc(f.name) + '">'
-    + '<img alt="" width="58" height="58" src="' + (f.thumb || '') + '"><b>F' + f.fid + '</b></button>').join('') + '</div>';
+  [...CL.role.keys()].forEach(k => { if (!imgs.some(f => fk(f) === k)) CL.role.delete(k); });
+  imgs.forEach(f => { if (!CL.role.has(fk(f))) CL.role.set(fk(f), clCars().length < 4 ? 'car' : 'off'); });
+  CL.picked = new Set(clCars().map(fk));
+  if (!imgs.length) { host.innerHTML = '<div class="cl-none">Add 1 to 4 photos of the car in Footage first - side, front three-quarter and rear three-quarter work best. A photo of the wrap or PPF sample works as a swatch.</div>'; $('cl-sw').innerHTML = ''; return; }
+  host.innerHTML = '<div class="cl-photos">' + imgs.map(f => { const r = clRole(f);
+    return '<button class="cl-ph press' + (r === 'car' ? ' on' : r === 'swatch' ? ' sw' : '') + '" type="button" data-k="' + esc(fk(f)) + '" aria-label="' + esc(f.name) + ': ' + (r || 'not used') + '">'
+      + '<img alt="" width="58" height="58" src="' + (f.thumb || '') + '">' + (r === 'car' ? '<i>CAR</i>' : r === 'swatch' ? '<i>SWATCH</i>' : '') + '<b>F' + f.fid + '</b></button>'; }).join('') + '</div>';
+  const sw = clSwatches();
+  $('cl-sw').innerHTML = sw.map(f => '<div class="cl-sw-row"><img alt="" width="40" height="40" src="' + (f.thumb || '') + '"><div class="xl-f"><input data-sw="' + esc(fk(f)) + '" maxlength="60" placeholder="Name for this film, e.g. XPEL Stealth" value="' + esc(CL.swName.get(fk(f)) || '') + '" aria-label="Name for swatch F' + f.fid + '"></div></div>').join('');
 }
 $('cl-photos').addEventListener('click', e => {
   const b = e.target.closest('.cl-ph'); if (!b) return;
-  const k = b.dataset.k;
-  if (CL.picked.has(k)) CL.picked.delete(k);
-  else { if (CL.picked.size >= 4) { toast('Up to 4 photos', true); return; } CL.picked.add(k); }
+  const k = b.dataset.k, cur = CL.role.get(k) || 'off';
+  let nx = cur === 'car' ? 'swatch' : cur === 'swatch' ? 'off' : 'car';
+  if (nx === 'car' && clCars().length >= 4) nx = 'swatch';
+  CL.role.set(k, nx);
   renderClPhotos();
 });
+$('cl-sw').addEventListener('input', e => { const i = e.target.closest('[data-sw]'); if (i) CL.swName.set(i.dataset.sw, i.value.trim()); });
 function clColors() {
   return [...new Set($('cl-colors').value.split('\n').map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean))].slice(0, 12);
 }
@@ -4331,10 +4352,11 @@ async function clPoll() {
   finally { CL.polling = false; $('cl-prog').classList.remove('on'); }
 }
 async function clRender() {
-  const imgs = clImages().filter(f => CL.picked && CL.picked.has(f.key || f.name));
-  const colors = clColors();
-  if (!imgs.length) { toast('Pick at least one car photo', true); return; }
-  if (!colors.length) { toast('List at least one wrap color', true); $('cl-colors').focus(); return; }
+  const imgs = clCars(), sws = clSwatches().slice(0, 8);
+  const colors = sws.map((f, j) => ({ name: CL.swName.get(fk(f)) || 'Swatch F' + f.fid, ref: 4 + j, sw: f }))
+    .concat(clColors().map(n => ({ name: n, ref: null })));
+  if (!imgs.length) { toast('Mark at least one photo as the CAR', true); return; }
+  if (!colors.length) { toast('Mark a swatch photo or type at least one color', true); $('cl-colors').focus(); return; }
   if (imgs.length * colors.length > 60) { toast('That is ' + imgs.length * colors.length + ' renders - keep it to 60 or fewer', true); return; }
   if (!(await unlock())) return;
   const ping = await api('ping').catch(() => null);
@@ -4349,11 +4371,12 @@ async function clRender() {
     CL.photos = imgs; CL.nextK = 0;
     $('cl-prog').classList.add('on'); $('cl-msg').textContent = 'Sending the car photos'; $('cl-bar').style.width = '2%'; $('cl-pct').textContent = '0%';
     for (let i = 0; i < imgs.length; i++) await api('cl-src', { query: { job: CL.job, i }, body: photoJpeg(imgs[i]) });
+    for (const c of colors) if (c.sw) await api('cl-src', { query: { job: CL.job, i: c.ref }, body: photoJpeg(c.sw) });
     CL.tiles = [];
-    colors.forEach(color => imgs.forEach((f, i) => CL.tiles.push({ k: CL.nextK++, src: i, color, status: 'waiting', keep: true })));
+    colors.forEach(c => imgs.forEach((f, i) => CL.tiles.push({ k: CL.nextK++, src: i, ref: c.ref, color: c.name, status: 'waiting', keep: true })));
     renderClGrid();
     $('cl-st').textContent = 'Rendering ' + CL.tiles.length + ' - you can keep editing meanwhile.';
-    await clStart(CL.tiles.map(t => ({ k: t.k, src: t.src, color: t.color })));
+    await clStart(CL.tiles.map(t => ({ k: t.k, src: t.src, ref: t.ref, color: t.color })));
     await clPoll();
   } catch (e) { $('cl-st').textContent = e.message || String(e); $('cl-st').classList.add('err'); toast(e.message || String(e), true); $('cl-prog').classList.remove('on'); }
   finally { $('cl-go').disabled = false; }
@@ -4364,7 +4387,7 @@ async function clReroll(i) {
   if (t.url) URL.revokeObjectURL(t.url);
   Object.assign(t, { k: CL.nextK++, status: 'waiting', url: '', blob: null, error: '', keep: true });
   renderClGrid();
-  try { await clStart([{ k: t.k, src: t.src, color: t.color }]); clPoll(); }
+  try { await clStart([{ k: t.k, src: t.src, ref: t.ref, color: t.color }]); clPoll(); }
   catch (e) { t.status = 'error'; t.error = e.message; renderClGrid(); }
 }
 async function addSource(file) {
@@ -4395,7 +4418,7 @@ async function clMake() {
       setTpl('walk'); setCut('hard');
       setLook(Object.assign({}, S.look, { headline: 'none', lower: 'off' }));
       renderFootage(); renderClips(); renderClPhotos(); replan(false); seekTo(0);
-      api('cl-drop', { query: { job: CL.job, n: CL.nextK, m: CL.photos.length }, body: {} }).catch(() => {});
+      api('cl-drop', { query: { job: CL.job, n: CL.nextK, m: 12 }, body: {} }).catch(() => {});
       toast('Lineup ready - ' + kept.length + ' color' + (kept.length === 1 ? '' : 's'));
       $('pv').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     } catch (e) { toast(e.message || String(e), true); }

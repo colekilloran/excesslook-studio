@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1g-2026-11-23-colorlineup';
+export const CORE_BUILD = 'SC1h-2026-11-23-swatch';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -590,10 +590,15 @@ export function finishOf(color) {
   if (/metallic|pearl|flake/.test(c)) return 'gloss metallic finish with fine metal flake';
   return 'high gloss finish with crisp reflections, like fresh paint';
 }
-export function recolorPrompt(color) {
+export function recolorPrompt(color, swatch) {
   const col = clean(color, 80);
-  return 'Edit this photo of a car: change the color of the car\'s painted body panels to ' + col + ' as a professional vinyl wrap, '
-    + finishOf(col) + '. Wrap every painted panel evenly - hood, roof, doors, fenders, bumpers, mirrors and pillars that are body color. '
+  /* SC1h - Cole photographed the film itself: "its not actually making the car the new color. it just makes a
+     slide show of the car and then the ppf color i took a picture of". A swatch photo rides along as the second
+     image and the edit matches it exactly. */
+  const what = swatch
+    ? 'the exact color, finish and sheen of the wrap or paint protection film shown in the second image (a photo of a sample of the film' + (col ? ', called ' + col : '') + ') - match its hue, brightness, gloss or satin or matte level and any metallic flake or texture; ignore everything else in the second image'
+    : col + ' as a professional vinyl wrap, ' + finishOf(col);
+  return 'Edit the first image, a photo of a car: change the color of the car\'s painted body panels to ' + what + '. Wrap every painted panel evenly - hood, roof, doors, fenders, bumpers, mirrors and pillars that are body color. '
     + 'Keep everything else exactly the same: the same car, the same angle and framing, wheels, tires, brake calipers, glass and window tint, '
     + 'headlights, taillights, badges and emblems, grille, chrome and black trim, license plate, background, ground, lighting and shadows. '
     + 'Photorealistic, like a real photo of the wrapped car. No text, no watermark, no added objects.';
@@ -611,8 +616,12 @@ async function recolorOne({ job, r, store, fetchImpl, env }) {
     if (!src || !src.jpg) throw new Error('The car photo did not arrive - try again');
     const fd = new FormData();
     fd.append('model', env.OPENAI_IMAGE_MODEL || IMAGE_MODEL);
-    fd.append('prompt', recolorPrompt(r.color) + (r.extra ? ' ' + clean(r.extra, 300) : ''));
-    fd.append('image', new Blob([Buffer.from(src.jpg, 'base64')], { type: 'image/jpeg' }), 'car.jpg');
+    const ref = r.ref >= 0 ? await store.get(clKey(job, 'src', r.ref), { type: 'json' }) : null;
+    if (r.ref >= 0 && !(ref && ref.jpg)) throw new Error('The swatch photo did not arrive - try again');
+    fd.append('prompt', recolorPrompt(r.color, !!ref) + (r.extra ? ' ' + clean(r.extra, 300) : ''));
+    const blob = b64 => new Blob([Buffer.from(b64, 'base64')], { type: 'image/jpeg' });
+    if (ref) { fd.append('image[]', blob(src.jpg), 'car.jpg'); fd.append('image[]', blob(ref.jpg), 'swatch.jpg'); }
+    else fd.append('image', blob(src.jpg), 'car.jpg');
     fd.append('size', renderSize(src.w, src.h));
     fd.append('quality', env.OPENAI_IMAGE_QUALITY || 'medium');
     fd.append('output_format', 'jpeg');
@@ -632,8 +641,8 @@ async function recolorOne({ job, r, store, fetchImpl, env }) {
 export async function runRecolor({ body, store, fetchImpl, env }) {
   const job = safeId(body && body.job);
   const list = (Array.isArray(body && body.renders) ? body.renders : []).slice(0, 120)
-    .map(r => ({ k: Math.round(Number(r.k)), src: Math.round(Number(r.src)), color: clean(r.color, 80), extra: clean(r.extra, 300) }))
-    .filter(r => r.k >= 0 && r.k < 400 && r.src >= 0 && r.src < 12 && r.color);
+    .map(r => ({ k: Math.round(Number(r.k)), src: Math.round(Number(r.src)), ref: r.ref == null ? -1 : Math.round(Number(r.ref)), color: clean(r.color, 80), extra: clean(r.extra, 300) }))
+    .filter(r => r.k >= 0 && r.k < 400 && r.src >= 0 && r.src < 12 && r.ref < 12 && (r.color || r.ref >= 0));
   if (!job || !list.length) return { ok: false, error: 'nothing to render' };
   if (!env.OPENAI_API_KEY) {
     for (const r of list) await store.setJSON(clKey(job, 'st', r.k), { status: 'error', color: r.color, src: r.src, error: 'OPENAI_API_KEY is not set in Netlify' });

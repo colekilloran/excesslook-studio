@@ -240,7 +240,7 @@ const badL = await C.handleApi({ method: "POST", op: "learn-del", query: {}, bod
 check(60, delL.status === 200 && delL.json.lessons.length === 0 && badL.status === 400, 'a wrong lesson can be forgotten');
 
 // 61-68 SC1g color lineup - recolor renders on OpenAI's image editor, one key per render
-check(61, C.CORE_BUILD === 'SC1g-2026-11-23-colorlineup', 'core ' + C.CORE_BUILD);
+check(61, /^SC1[g-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const pr = C.recolorPrompt('Satin Nardo Grey');
 check(62, /Satin Nardo Grey/.test(pr) && /satin finish/.test(pr) && /Keep everything else exactly the same/.test(pr) && /wheels, tires/.test(pr) && /license plate/.test(pr) && /No text, no watermark/.test(pr)
   && /matte finish/.test(C.finishOf('Matte Military Green')) && /chrome/.test(C.finishOf('Gold Chrome')) && /high gloss/.test(C.finishOf('Miami Blue')), 'the prompt names the color and finish and freezes everything else');
@@ -271,6 +271,20 @@ await C.runRecolor({ body: { job: 'cj2', renders: [{ k: 0, src: 0, color: 'Red' 
 const st2 = await C.handleApi({ method: 'GET', op: 'cl-status', query: { job: 'cj2', ks: '0' }, store: cs, env });
 await C.handleApi({ method: 'POST', op: 'cl-drop', query: { job: 'cj1', n: '4', m: '1' }, body: {}, store: cs, env });
 check(68, /OPENAI_API_KEY is not set/.test(st2.json.renders[0].error) && ![...cs.m.keys()].some(k => k.startsWith('cl/cj1/')), 'no key says so; cl-drop clears the job');
+
+// 69-71 SC1h swatch photos - "it just makes a slide show of the car and then the ppf color i took a picture of"
+check(69, C.CORE_BUILD === 'SC1h-2026-11-23-swatch', 'core ' + C.CORE_BUILD);
+const sws = fakeStore(), swCalls = [];
+await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'sw1', i: '0' }, body: { jpg: 'QUJD'.repeat(100), w: 1200, h: 1600 }, store: sws, env });
+await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'sw1', i: '4' }, body: { jpg: 'REVG'.repeat(100), w: 800, h: 800 }, store: sws, env });
+const swOA = async (url, opt) => { const imgs = opt.body.getAll('image[]'), one = opt.body.getAll('image'); swCalls.push({ imgs: imgs.length, one: one.length, prompt: opt.body.get('prompt'), size: opt.body.get('size') });
+  return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'QUJD' }] }) }; };
+await C.runRecolor({ body: { job: 'sw1', renders: [{ k: 0, src: 0, ref: 4, color: 'XPEL Stealth' }, { k: 1, src: 0, ref: 4, color: '' }, { k: 2, src: 0, color: 'Satin Black' }, { k: 3, src: 0, ref: 9, color: 'gone' }] }, store: sws, fetchImpl: swOA, env: envImg });
+const sst = await C.handleApi({ method: 'GET', op: 'cl-status', query: { job: 'sw1', ks: '0,1,2,3' }, store: sws, env });
+const swc = swCalls.find(c => /XPEL Stealth/.test(c.prompt)), plain = swCalls.find(c => /Satin Black/.test(c.prompt));
+check(70, swc && swc.imgs === 2 && swc.one === 0 && /exact color, finish and sheen of the wrap or paint protection film shown in the second image/.test(swc.prompt) && /called XPEL Stealth/.test(swc.prompt) && swc.size === '1024x1536'
+  && plain && plain.imgs === 0 && plain.one === 1 && /Satin Black as a professional vinyl wrap/.test(plain.prompt), 'a swatch photo goes as the second image and the prompt matches it; a typed color stays one image');
+check(71, sst.json.renders[0].status === 'done' && sst.json.renders[1].status === 'done' && sst.json.renders[3].status === 'error' && /swatch photo did not arrive/.test(sst.json.renders[3].error), 'an unnamed swatch still renders; a missing swatch says so');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
