@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1n-2026-11-24-paltrixcatalog';
+export const CORE_BUILD = 'SC1o-2026-11-24-filmfetch';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -751,6 +751,7 @@ const FILM_BRIEF = 'You research automotive wrap and paint protection films for 
   + 'Paltrix (paltrixppf.com) codes read series - series letter - color family + number, e.g. 1002-C-A31 = Solid Color Series, grey family, High Gloss Cement Grey. Series: 1002-C Solid (gloss), 1003-H Chameleon / color shift, 1005-Y Matte and Satin, 1006-Z Pearl / metallic, 1007-F Carbon Fiber, 1008-L Laser. '
   + 'When the request says the Paltrix code is in their catalog, that name and series are certain - never call the code unrecognized or a bad format; find its page on paltrixppf.com for photos of the film. '
   + 'Clear films (like XPEL Stealth or any clear satin / gloss PPF) do not change the paint color - say so with clear = true. '
+  + 'Open the maker\'s product page with web_fetch when you have its address. Write in US English (color, not colour). Keep note under 500 characters. '
   + 'Never invent a code. If you cannot find the product, say so in note and set confidence to estimate. Then call submit_film once.';
 /* SC1n - Cole: "its saying its not recognizing the code format", then sent paltrixppf.com showing "High Gloss Cement Grey
    1002-C-A31". SC1m was built on a look-alike site's made-up "P701G" format (wrong - removed). Real Paltrix codes are
@@ -934,16 +935,20 @@ export function decodePaltrix(brand, code, name) {
   if (c.startsWith('1005-Y') && /^satin/i.test(nm)) { finish = /metallic/i.test(nm) ? 'metallic satin' : 'satin'; card = 'satin'; }
   if (c.startsWith('1006-Z-L')) { finish = 'color shift'; card = 'color shift'; }
   return { code: c, name: nm, known: !!nm, series: ser ? ser.name : '', family: PALTRIX_FAMILY[c[7]] || '', finish, cardFinish: card,
-    page: 'https://paltrixppf.com/colors/' + (ser ? ser.page : 'solid') + '/update/' };
+    page: 'https://paltrixppf.com/colors/' + (ser ? ser.page : 'solid') + '/update/',
+    url: nm ? 'https://paltrixppf.com/colors/' + (ser ? ser.page : 'solid') + '/update/' + nm.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '/' : '' };
 }
 export function paltrixLine(d) {
   return d.known
-    ? 'Paltrix catalog (certain): ' + d.code + ' = ' + d.name + ', ' + d.series + ' (' + d.finish + '). Find it on ' + d.page + ' - each color has its own page there with photos of the film.'
+    ? 'Paltrix catalog (certain): ' + d.code + ' = ' + d.name + ', ' + d.series + ' (' + d.finish + '). Open its product page with web_fetch: ' + d.url + ' (if that address fails, the series list is ' + d.page + ').'
     : 'Paltrix code ' + d.code + ' is in the valid Paltrix format' + (d.series ? ' - ' + d.series + ' (' + d.finish + ')' : '') + (d.family ? ', ' + d.family + ' family' : '') + ', but not in the catalog list we have - look for it on paltrixppf.com; if it is not there, match from the sample photo and the name.';
 }
 const HEX = /^#?[0-9a-f]{6}$/i;
 export function validateFilm(sp) {
   sp = sp && typeof sp === 'object' ? sp : {};
+  return usDeep(validateFilm0(sp));
+}
+function validateFilm0(sp) {
   const hx = v => (HEX.test(String(v || '')) ? '#' + String(v).replace('#', '').toUpperCase() : '');
   const ft = ['color PPF', 'clear PPF', 'vinyl wrap', 'paint'], fin = FILM_TOOL.input_schema.properties.finish.enum;
   return {
@@ -957,9 +962,11 @@ export function validateFilm(sp) {
     render_notes: clean(sp.render_notes, 600),
     confidence: ['exact', 'close', 'estimate'].includes(sp.confidence) ? sp.confidence : 'estimate',
     sources: (Array.isArray(sp.sources) ? sp.sources : []).slice(0, 6).map(x => ({ title: clean(x && x.title, 120), url: /^https?:\/\//.test(String(x && x.url || '')) ? clean(x.url, 400) : '' })).filter(x => x.url),
-    note: clean(sp.note, 300)
+    note: clean(sp.note, 600)
   };
 }
+const usSpell = v => typeof v === 'string' ? v.replace(/colour/g, 'color').replace(/Colour/g, 'Color').replace(/COLOUR/g, 'COLOR') : v;
+function usDeep(o) { if (typeof o === 'string') return usSpell(o); if (Array.isArray(o)) return o.map(usDeep); if (o && typeof o === 'object') { for (const k of Object.keys(o)) if (k !== 'url') o[k] = usDeep(o[k]); } return o; }
 export function filmRequest(body, env) {
   const ask = ['Brand: ' + clean(body.brand, 40), 'Product line: ' + clean(body.line, 60), 'Color name: ' + clean(body.name, 60), 'Color code: ' + clean(body.code, 40),
     'Owner says the finish is: ' + (clean(body.finish, 30) || 'not sure'), body.notes ? 'Owner notes: ' + clean(body.notes, 300) : '',
@@ -969,7 +976,9 @@ export function filmRequest(body, env) {
   if (body.swatch && /^[A-Za-z0-9+/=]+$/.test(String(body.swatch).slice(0, 200))) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: body.swatch } }, { type: 'text', text: 'Above: the owner\'s photo of the sample.' });
   content.push({ type: 'text', text: 'Research this film so a render can match it exactly:\n' + ask });
   return { model: env.STUDIO_MODEL || DEFAULT_MODEL, max_tokens: 8000, system: FILM_BRIEF,
-    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6 }, FILM_TOOL], tool_choice: { type: 'auto' },
+    /* SC1o - research could search but not open a page: "I could not open the paltrixppf.com page for 1002-C-A31". Web fetch
+       (beta web-fetch-2025-09-10) opens the maker's page; the exact URL is in the request so it is allowed to. */
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6 }, { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 4 }, FILM_TOOL], tool_choice: { type: 'auto' },
     messages: [{ role: 'user', content }] };
 }
 export async function runFilm({ body, store, fetchImpl, env }) {
@@ -983,7 +992,7 @@ export async function runFilm({ body, store, fetchImpl, env }) {
     const req = filmRequest(body, env);
     let found = null, searches = 0;
     for (let turn = 0; turn < 6 && !found; turn++) {
-      const res = await fetchImpl(API_URL, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify(req) });
+      const res = await fetchImpl(API_URL, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'web-fetch-2025-09-10', 'content-type': 'application/json' }, body: JSON.stringify(req) });
       const txt = await res.text(); let d = null; try { d = JSON.parse(txt); } catch (e) {}
       if (!res.ok) throw new Error('Claude API ' + res.status + ': ' + ((d && d.error && d.error.message) || txt.slice(0, 200)));
       const blocks = (d && d.content) || [];

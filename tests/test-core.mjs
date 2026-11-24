@@ -289,7 +289,7 @@ check(71, sst.json.renders[0].status === 'done' && sst.json.renders[1].status ==
 // 72-79 SC1i film research - "the ppf colors are crucial that they are an exact match"
 check(72, /^SC1[i-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const fr = C.filmRequest({ brand: '3M', line: '2080', name: 'Satin Dark Grey', code: 'S261', finish: 'satin', swatch: 'QUJD'.repeat(50) }, env);
-check(73, fr.tools[0].type === 'web_search_20250305' && fr.tools[0].name === 'web_search' && fr.tools[1].name === 'submit_film' && fr.tool_choice.type === 'auto'
+check(73, fr.tools[0].type === 'web_search_20250305' && fr.tools[0].name === 'web_search' && fr.tools.some(t => t.name === 'submit_film') && fr.tool_choice.type === 'auto'
   && fr.messages[0].content[0].type === 'image' && /Color code: S261/.test(fr.messages[0].content.slice(-1)[0].text) && /manufacturer/.test(fr.system) && /Never invent a code/.test(fr.system), 'research request: web search + submit_film, the sample photo, the code');
 const fsStore = fakeStore(), fcalls = [];
 const filmFake = async (url, opt) => { const b = JSON.parse(opt.body); fcalls.push(b);
@@ -359,7 +359,7 @@ await C.runRecolor({ body: { job: 'pj', renders: [{ k: 0, src: 0, color: 'Nardo 
 check(89, oa4.length === 1 && /Nardo Grey/.test(oa4[0]) && /DIRECT SUNLIGHT/.test(oa4[0]), 'a render job with a sample photo carries its photo light through to the image model');
 
 // 90-95 SC1n Paltrix catalog - Cole sent paltrixppf.com: "High Gloss Cement Grey 1002-C-A31"
-check(90, C.CORE_BUILD === 'SC1n-2026-11-24-paltrixcatalog', 'core ' + C.CORE_BUILD);
+check(90, /^SC1[n-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const dz = C.decodePaltrix('Paltrix', '1002-C-A31');
 check(91, Object.keys(C.PALTRIX_COLORS).length === 150 && dz.name === 'High Gloss Cement Grey' && dz.series === 'Solid Color Series' && dz.finish === 'gloss' && dz.family === 'grey'
   && C.decodePaltrix('', '1002 c a31').code === '1002-C-A31' && C.decodePaltrix('Paltrix', '1005-Y-V07').finish === 'satin' && C.decodePaltrix('Paltrix', '1006-Z-L02').finish === 'color shift'
@@ -381,6 +381,19 @@ const vc = C.validateCard({ chips: [{ name: '', code: '1002-C-A31', finish: 'mat
 check(94, vc.brand === 'Paltrix' && vc.chips[0].name === 'High Gloss Cement Grey' && vc.chips[0].finish === 'gloss' && vc.chips[1].code === '1005-Y-V07' && vc.chips[1].finish === 'satin' && vc.chips[2].code === 'P703G',
   'card chips: Paltrix codes cleaned, a missing name filled from the catalog, finish set by series, brand filled in ' + JSON.stringify(vc.chips.map(x => [x.code, x.name, x.finish])));
 check(95, /1002-C-A31/.test(C.CARD_BRIEF) && !/P701G/.test(C.CARD_BRIEF), 'card reader brief knows the real Paltrix format');
+
+// 96-99 SC1o - "I could not open the paltrixppf.com page for 1002-C-A31 through search", the note cut off mid-word, "colour"
+check(96, C.CORE_BUILD === 'SC1o-2026-11-24-filmfetch', 'core ' + C.CORE_BUILD);
+const fq = C.filmRequest({ brand: 'Paltrix', code: '1002-C-A31' }, env), fqt = fq.messages[0].content.map(x => x.text || '').join(' ');
+check(97, fq.tools.some(t => t.type === 'web_fetch_20250910' && t.name === 'web_fetch' && t.max_uses > 0) && fqt.includes('https://paltrixppf.com/colors/solid/update/high-gloss-cement-grey/') && /web_fetch/.test(fq.system) && /US English/.test(fq.system),
+  'research can open pages and is given the exact Paltrix product page (the one Cole sent)');
+const hdrs = [], fs4 = fakeStore();
+await C.runFilm({ body: { id: 'w1', brand: 'Paltrix', code: '1002-C-A31' }, store: fs4, env, fetchImpl: async (u, o) => { hdrs.push(o.headers); return { ok: true, status: 200, text: async () => JSON.stringify({ stop_reason: 'tool_use', content: [
+  { type: 'server_tool_use', id: 's', name: 'web_fetch', input: { url: 'https://paltrixppf.com/colors/solid/update/high-gloss-cement-grey/' } },
+  { type: 'tool_use', id: 't', name: 'submit_film', input: { color_name: 'High Gloss Cement Grey', finish: 'gloss', base_color: 'Cool blue-grey colour', render_notes: 'The colour stays flat.', confidence: 'close', note: 'A'.repeat(450) + ' the end', lighting: { sun: 'Colours lift' } } }] }) }; } });
+const w1 = (await C.handleApi({ method: 'GET', op: 'film', query: { id: 'w1' }, store: fs4, env })).json;
+check(98, hdrs[0]['anthropic-beta'] === 'web-fetch-2025-09-10' && w1.searches === 1, 'the web fetch beta header is sent and a page open counts as a lookup');
+check(99, /the end$/.test(w1.spec.note) && !/colour/i.test(JSON.stringify(w1.spec)) && /Cool blue-grey color/.test(w1.spec.base_color) && /Colors lift/.test(w1.spec.lighting.sun), 'a long note is kept whole and the wording is US spelling (color)');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
