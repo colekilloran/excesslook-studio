@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1p-2026-11-25-custombuild';
+export const CORE_BUILD = 'SC1q-2026-11-25-wheelref';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -727,7 +727,7 @@ function cleanBuild(b) {
     spec: f && f.spec && typeof f.spec === 'object' ? validateFilm(f.spec) : null, photoLight: f && PHOTO_LIGHT[f.photoLight] ? f.photoLight : '' })).filter(f => f.name || f.img);
   const it = b.interior && typeof b.interior === 'object' ? b.interior : {};
   return { scene, car: clean(b.car, 80), films, wheels: clean(b.wheels, 120),
-    design: b.design >= 1 && b.design <= 16 ? Math.round(b.design) : 0, seats: b.seats >= 1 && b.seats <= 16 ? Math.round(b.seats) : 0,
+    design: b.design >= 1 && b.design <= 16 ? Math.round(b.design) : 0, rims: b.rims >= 1 && b.rims <= 16 ? Math.round(b.rims) : 0, seats: b.seats >= 1 && b.seats <= 16 ? Math.round(b.seats) : 0,
     interior: { on: !!it.on, leather: clean(it.leather, 120), seats: clean(it.seats, 160), trim: clean(it.trim, 200), lighting: clean(it.lighting, 200) },
     notes: clean(b.notes, 500) };
 }
@@ -742,10 +742,12 @@ export function buildPrompt(raw, light) {
     if (base) lines.push('Base color: wrap every painted body panel not named below in ' + filmLine(base) + '.');
     others.forEach(f => lines.push((f.role === 'parts' ? 'Brake calipers and exhaust tips' : 'Accent') + ': ' + (f.where || BUILD_ROLES[f.role]) + ' in ' + filmLine(f) + '.'));
     return 'Edit image 1, a real photo of ' + car + ', into a photo of the same car with this custom paint protection film design. ' + lines.join(' ')
-      + (b.wheels ? ' Wheels: refinish the wheels in ' + b.wheels + ' - the same wheel design, spokes and size, only the finish changes.' : '')
+      /* SC1q - Cole sent the wheel he is fitting (a white 9-spoke): with a wheel photo the design is replaced, not refinished */
+      + (b.rims ? ' Wheels: replace the wheels with the wheel shown in image ' + b.rims + ' - its exact spoke design, spoke count, lip and center cap' + (b.wheels ? ', in ' + b.wheels : ', in its finish') + ' - sized to fill the wheel arches like the originals, on the same tires, at the same angle and perspective as the original wheels.'
+        : b.wheels ? ' Wheels: refinish the wheels in ' + b.wheels + ' - the same wheel design, spokes and size, only the finish changes.' : '')
       + (b.design ? ' Image ' + b.design + ' is a design concept that shows WHERE the accent film goes - copy only its layout of the accent sections onto this car; its colors are wrong and its car is not accurate, so take colors only from the film samples and the car only from image 1. It may be a collage: ignore any text, labels, swatch boxes and panel borders in it.' : '')
       + ' Color-shift films change color with the viewing angle across the body curves. ' + keep
-      + (b.wheels ? '' : 'wheels, ') + 'tires, glass and window tint, lights, badges, grille, black trim, license plate, background' + (light && LIGHTS[light] ? ' and ground. ' + LIGHTS[light] + ' ' : ', ground, lighting and shadows. ')
+      + (b.wheels || b.rims ? '' : 'wheels, ') + 'tires, glass and window tint, lights, badges, grille, black trim, license plate, background' + (light && LIGHTS[light] ? ' and ground. ' + LIGHTS[light] + ' ' : ', ground, lighting and shadows. ')
       + (b.notes ? 'Owner notes: ' + b.notes + ' ' : '') + 'Photorealistic, like a real photo of the finished car. No text, no watermark, no added objects.';
   }
   const trim = b.films.filter(f => f.role === 'trim' || f.role === 'accent');

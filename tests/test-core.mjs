@@ -397,7 +397,7 @@ check(99, /the end$/.test(w1.spec.note) && !/colour/i.test(JSON.stringify(w1.spe
 
 // 100-104 SC1p Custom Build - Cole's C30: GSWF Satin White base, Paltrix Phantom White to Gold accent, Milan Gold calipers / tips,
 // gloss white rims, all-white leather interior with white buckets, accent film on the waterfall dash, white accent lighting
-check(100, C.CORE_BUILD === 'SC1p-2026-11-25-custombuild', 'core ' + C.CORE_BUILD);
+check(100, /^SC1[p-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 check(101, C.decodePaltrix('Paltrix', '1004-J-G07').name === 'Milan Gold' && C.decodePaltrix('Paltrix', '1004-J-G07').series === 'Metallic Series' && C.decodePaltrix('', '2004-J-S06').name === 'Metallic Gunmetal Grey'
   && C.decodePaltrix('Paltrix', '1003-H-W07').name === 'Phantom White to Gold', 'Paltrix Metallic series (1004-J / 2004-J) is in the catalog');
 const BX = { scene: 'exterior', car: '2008 Volvo C30 T5', wheels: 'gloss white', design: 2, films: [
@@ -420,6 +420,12 @@ await C.runRecolor({ body: { job: 'bj', renders: [{ k: 0, src: 0, refs: [12, 13]
   fetchImpl: async (u, o) => { oa5.push({ p: o.body.get('prompt'), n: o.body.getAll('image[]').length, one: o.body.get('image') }); return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'QUJD' }] }) }; } });
 const bst = (await C.handleApi({ method: 'GET', op: 'cl-status', query: { job: 'bj', ks: '0' }, store: st5, env })).json.renders[0];
 check(104, oa5.length === 1 && oa5[0].n === 3 && !oa5[0].one && /Change for this render: mirror caps too/.test(oa5[0].p) && bst.status === 'done', 'a build render sends the photo plus every reference as images 1..n, with the change note');
+
+// 105-106 SC1q - Cole sent the wheel he is fitting
+check(105, C.CORE_BUILD === 'SC1q-2026-11-25-wheelref', 'core ' + C.CORE_BUILD);
+const pw = C.buildPrompt(Object.assign({}, BX, { rims: 5 }), ''), pw2 = C.buildPrompt(Object.assign({}, BX, { rims: 5, wheels: '' }), ''), pw3 = C.buildPrompt(Object.assign({}, BX, { wheels: '' }), '');
+check(106, /replace the wheels with the wheel shown in image 5 - its exact spoke design, spoke count, lip and center cap, in gloss white/.test(pw) && !/refinish/.test(pw) && !/wheels, tires/.test(pw)
+  && /in its finish/.test(pw2) && /wheels, tires/.test(pw3) && !/Wheels:/.test(pw3), 'a wheel photo swaps the wheel design in (with the finish if given); no wheel photo and no finish keeps the car\'s own wheels');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);

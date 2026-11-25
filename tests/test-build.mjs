@@ -2,6 +2,7 @@
 // another color as the accent color that will cover sections of the exterior. I am also replacing the interior with all
 // white leather ... the waterfall dash and other interior pieces will be ppf'd with the accent color ... white adjustable
 // bucket seats ... white interior lighting in some accent areas." Chose: a reusable mode, renders only. Then: "rims will be gloss white as well"
+// and ST1s: Cole sent the wheel he is fitting (white 9-spoke) - a Wheel photo slot swaps the design in.
 // Real core behind the function URLs; fake Claude and fake OpenAI (scaffold from test-photolight.mjs).
 // Usage: node tests/test-build.mjs [studio.html] [shots-dir]
 import { createRequire } from 'module';
@@ -134,6 +135,9 @@ try {
   await page.click('[data-bdadd="design"]').catch(() => {});
   await page.setInputFiles('#file-bdref', path.join(FIX, 'design.jpg'));
   await page.waitForFunction(() => window.XLStudio.S.build.design && window.XLStudio.S.build.design.jpg, null, { timeout: 8000 });
+  await page.click('[data-bdadd="rims"]').catch(() => {});
+  await page.setInputFiles('#file-bdref', path.join(FIX, 'ppf-swatch.jpg'));
+  await page.waitForFunction(() => window.XLStudio.S.build.rims && window.XLStudio.S.build.rims.jpg, null, { timeout: 8000 });
   await page.click('#bd-int-on');
   await page.fill('#bd-leather', 'All white leather');
   await page.fill('#bd-seats', 'White adjustable bucket seats');
@@ -161,9 +165,9 @@ try {
   const tiles = await page.evaluate(() => window.XLStudio.CL.tiles.map(t => t.color + '|' + (t.light || '')));
   check(6, JSON.stringify(tiles) === '["Exterior 1|shade","Interior 1 - Day|","Interior 1 - Night|"]' && oa.length === 3, 'renders: each exterior photo in each light, the interior by day and at night ' + JSON.stringify(tiles));
   const ex = oa.find(x => /custom paint protection film design/.test(x.prompt)), inD = oa.find(x => /interior/.test(x.prompt) && !/It is night/.test(x.prompt)), inN = oa.find(x => /It is night/.test(x.prompt));
-  check(7, ex && ex.imgs === 3 && /2008 Volvo C30 T5/.test(ex.prompt) && /Base color: wrap every painted body panel not named below in GSWF Satin White GSWF-CG-124S/.test(ex.prompt)
-    && /Accent: roof, mirrors and the side sections in the design in Paltrix Phantom White to Gold 1003-H-W07 \(its sample is image 3/.test(ex.prompt) && /Image 2 is a design concept that shows WHERE the accent film goes/.test(ex.prompt)
-    && /Brake calipers and exhaust tips: .* in Paltrix Milan Gold 1004-J-G07/.test(ex.prompt) && /open shade/.test(ex.prompt) && /Wheels: refinish the wheels in Gloss white/.test(ex.prompt) && !/wheels, tires, glass/.test(ex.prompt) && /ignore any text, labels, swatch boxes/.test(ex.prompt),
+  check(7, ex && ex.imgs === 4 && /2008 Volvo C30 T5/.test(ex.prompt) && /Base color: wrap every painted body panel not named below in GSWF Satin White GSWF-CG-124S/.test(ex.prompt)
+    && /Accent: roof, mirrors and the side sections in the design in Paltrix Phantom White to Gold 1003-H-W07 \(its sample is image 4/.test(ex.prompt) && /Image 2 is a design concept that shows WHERE the accent film goes/.test(ex.prompt)
+    && /Brake calipers and exhaust tips: .* in Paltrix Milan Gold 1004-J-G07/.test(ex.prompt) && /open shade/.test(ex.prompt) && /Wheels: replace the wheels with the wheel shown in image 3 - its exact spoke design, spoke count, lip and center cap, in Gloss white/.test(ex.prompt) && !/wheels, tires, glass/.test(ex.prompt) && /ignore any text, labels, swatch boxes/.test(ex.prompt),
     'exterior: real photo + design layout + accent sample; every film in its place with its code ' + (ex ? ex.imgs + ' imgs' : 'none'));
   check(8, inD && inN && inD.imgs === 2 && /All white leather/.test(inD.prompt) && /White adjustable bucket seats/.test(inD.prompt) && /waterfall center stack .* Phantom White to Gold/.test(inD.prompt) && !/Milan Gold|GSWF/.test(inD.prompt)
     && /lit by white LED strips along the dash and footwells/.test(inN.prompt), 'interior: white leather, the bucket seats, the accent film on the waterfall dash; the night render shows the white lighting');
@@ -174,7 +178,7 @@ try {
   await page.fill('#bd-extra', 'accent on the mirror caps too');
   await page.click('#cl-grid [data-rr="0"]');
   await page.waitForFunction(() => window.XLStudio.CL.tiles[0].status === 'done' && window.XLStudio.CL.tiles[0].k === 3, null, { timeout: 30000 });
-  check(10, oa.length === 4 && /Change for this render: accent on the mirror caps too/.test(oa[3].prompt) && oa[3].imgs === 3, 're-rendering one angle carries the change note');
+  check(10, oa.length === 4 && /Change for this render: accent on the mirror caps too/.test(oa[3].prompt) && oa[3].imgs === 4, 're-rendering one angle carries the change note');
   // save
   await page.click('#cl-grid .cl-tile[data-i="2"]');
   const dl = [];
@@ -187,7 +191,7 @@ try {
   await page.waitForFunction(() => /^Saved /.test(document.getElementById('proj-st').textContent), null, { timeout: 10000 });
   let saved = {};
   for (let k = 0; k < 40; k++) { const e = [...store.m.entries()].find(([x]) => x.startsWith('proj/')); saved = e ? JSON.parse(e[1]) : {}; if (saved.build && saved.build.interior && saved.build.interior.on && saved.build.car) break; await page.waitForTimeout(250); }
-  check(12, saved.kind === 'build' && saved.build.car === '2008 Volvo C30 T5' && saved.build.wheels === 'Gloss white' && saved.build.design && saved.build.design.key && Object.values(saved.build.roles).sort().join(',') === 'ext,int' && saved.colors[2].role === 'parts' && /side sections/.test(saved.colors[1].where),
+  check(12, saved.kind === 'build' && saved.build.car === '2008 Volvo C30 T5' && saved.build.wheels === 'Gloss white' && saved.build.design && saved.build.design.key && saved.build.rims && saved.build.rims.key && Object.values(saved.build.roles).sort().join(',') === 'ext,int' && saved.colors[2].role === 'parts' && /side sections/.test(saved.colors[1].where),
     'the build (car, references, photo roles, film roles and places, interior) saves with the project');
   // phone
   const pp = await open({ width: 390, height: 844 }, true);

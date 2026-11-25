@@ -250,7 +250,8 @@ body.k-build .steps{grid-template-columns:repeat(3,minmax(0,1fr))}
 body.k-build.st-3 .pv-col{display:none}
 body.k-build.st-3 .studio{grid-template-columns:minmax(0,1fr)}
 body.k-build.st-3 .ctl{max-width:980px}
-.bd-refs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bd-refs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:900px){.bd-refs{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bd-ref{position:relative;display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:#121217;border:1px solid var(--hair);min-height:84px}
 .bd-ref img{width:60px;height:60px;border-radius:10px;object-fit:cover;flex:none}
 .bd-ref .t{font:700 13px Montserrat,sans-serif;color:var(--text)}
@@ -731,7 +732,7 @@ details.memory summary::-webkit-details-marker{display:none}
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1r-2026-11-25-custombuild';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1s-2026-11-25-wheelref';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -2191,6 +2192,7 @@ function projState() {
     kind: S.kind, lights: S.lights.slice(),
     build: { car: S.build.car || '', wheels: S.build.wheels || '', design: S.build.design ? { key: S.build.design.key, name: S.build.design.name, thumb: S.build.design.thumb } : null,
       seats: S.build.seats ? { key: S.build.seats.key, name: S.build.seats.name, thumb: S.build.seats.thumb } : null,
+      rims: S.build.rims ? { key: S.build.rims.key, name: S.build.rims.name, thumb: S.build.rims.thumb } : null,
       roles: Object.assign({}, S.build.roles), interior: Object.assign({}, S.build.interior) },
     colors: S.colors.map(c => ({ brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, role: c.role || '', where: c.where || '', photoLight: c.photoLight || '', spec: c.spec, sig: c.spec ? colorSig(c) : '', swatches: c.swatches.map(w => ({ key: w.key, name: w.name, thumb: w.thumb })) })),
     ai: (S.plan || review) ? { plan: S.plan || null, usage: S.usage || null, why: $('rev-why').textContent, caption: $('rev-cap').value,
@@ -2347,7 +2349,7 @@ async function restoreProject(p, quiet) {
     }
     bdReset();
     if (p.build && typeof p.build === 'object') {
-      for (const k of ['design', 'seats']) { const r = p.build[k]; if (!r || !r.key) continue;
+      for (const k of ['design', 'rims', 'seats']) { const r = p.build[k]; if (!r || !r.key) continue;
         const f = fileOf(await idbGet(r.key), r); S.build[k] = { key: r.key, name: r.name || '', thumb: r.thumb || '', jpg: f ? (await fileThumb(f, 1536)).split(',')[1] : '' }; }
       S.build.roles = Object.assign({}, p.build.roles || {}); S.build.car = p.build.car || ''; S.build.wheels = p.build.wheels || '';
       S.build.interior = Object.assign(S.build.interior, p.build.interior || {});
@@ -3037,9 +3039,9 @@ async function clMake() {
    accent areas." Chose: a reusable mode, renders only. Every film has a role and a place; real photos are marked Exterior
    or Interior; a design concept image (where the accent goes) and a seat photo ride along as references. Exterior photos
    render in each light picked; interior photos render in daylight and, with accent lighting, at night. */
-S.build = { car: '', wheels: '', design: null, seats: null, roles: {}, interior: { on: false, leather: '', seats: '', trim: '', lighting: '' } };
+S.build = { car: '', wheels: '', design: null, rims: null, seats: null, roles: {}, interior: { on: false, leather: '', seats: '', trim: '', lighting: '' } };
 let bdRefFor = '';
-function bdReset() { S.build = { car: '', wheels: '', design: null, seats: null, roles: {}, interior: { on: false, leather: '', seats: '', trim: '', lighting: '' } }; bdFill(); }
+function bdReset() { S.build = { car: '', wheels: '', design: null, rims: null, seats: null, roles: {}, interior: { on: false, leather: '', seats: '', trim: '', lighting: '' } }; bdFill(); }
 function bdFill() {
   const it = S.build.interior;
   $('bd-car').value = S.build.car || ''; $('bd-wheels').value = S.build.wheels || '';
@@ -3052,6 +3054,7 @@ function bdRenderRefs() {
     return '<div class="bd-ref" data-bdref="' + k + '">' + (r ? '<img alt="" width="60" height="60" src="' + r.thumb + '"><div><div class="t">' + t + '</div><div class="s">' + esc(r.name) + '</div></div><button class="ibtn press" type="button" data-bddel="' + k + '" aria-label="Remove">' + IC.x + '</button>'
       : '<button class="xl-add press" type="button" data-bdadd="' + k + '">+ ' + t + '</button><div class="s">' + s + '</div>') + '</div>'; };
   $('bd-refs').innerHTML = slot('design', 'Design layout', 'A concept showing where the accent goes. Only its layout is used - colors and car come from your photos and films.')
+    + slot('rims', 'Wheel photo', 'The wheels you are fitting - the renders swap them in. Leave empty to keep the car\'s own wheels.')
     + slot('seats', 'Seat photo', 'The seats you are buying, so the interior renders get their shape right.');
   K.pressAll($('bd-refs'));
 }
@@ -3110,6 +3113,7 @@ async function bdRender() {
     let slot = 12;
     const put = async jpg => { const i = slot++; await api('cl-src', { query: { job: CL.job, i }, body: { jpg, w: 1024, h: 1024 } }); return i; };
     const design = S.build.design && S.build.design.jpg ? await put(S.build.design.jpg) : -1;
+    const rims = S.build.rims && S.build.rims.jpg && ext.length ? await put(S.build.rims.jpg) : -1;
     const seats = S.build.seats && S.build.seats.jpg && int.length ? await put(S.build.seats.jpg) : -1;
     const sw = {};
     for (const c of films) if (c.swatches[0] && c.swatches[0].jpg && slot < 24) sw[c.id] = await put(c.swatches[0].jpg);
@@ -3117,6 +3121,7 @@ async function bdRender() {
       const refs = [], num = i => { refs.push(i); return refs.length + 1; };
       const b = { scene, car: S.build.car || '', wheels: S.build.wheels || '', notes: $('ai-note').value.trim().slice(0, 500), interior: Object.assign({}, it), films: [] };
       if (scene === 'exterior' && design >= 0) b.design = num(design);
+      if (scene === 'exterior' && rims >= 0) b.rims = num(rims);
       if (scene !== 'exterior' && seats >= 0) b.seats = num(seats);
       films.filter(c => scene === 'exterior' ? c.role !== 'trim' : (c.role === 'trim' || c.role === 'accent')).forEach(c => b.films.push({
         name: bdName(c), role: c.role || 'accent', where: c.where || '', spec: c.spec || null, photoLight: c.photoLight || '', img: sw[c.id] != null ? num(sw[c.id]) : 0 }));
