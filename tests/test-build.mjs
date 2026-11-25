@@ -127,6 +127,14 @@ try {
   await page.click('#colors .colr:nth-child(2) [data-swadd]').catch(() => {});
   await page.setInputFiles('#file-swatch', path.join(FIX, 'ppf-swatch.jpg'));
   await page.waitForFunction(() => window.XLStudio.S.colors[1].swatches.length === 1, null, { timeout: 8000 });
+  // ST1t - "sometimes one photo of the ppf doesn't show the color change": a color-shift film asks for more angles
+  await page.click('#colors .colr:nth-child(2) [data-a="cfin"][data-v="color shift"]').catch(() => {});
+  const ask2 = await page.evaluate(() => document.querySelector('#colors .colr:nth-child(2)').innerText);
+  await page.click('#colors .colr:nth-child(2) [data-swadd]').catch(() => {});
+  await page.setInputFiles('#file-swatch', path.join(FIX, 'design.jpg'));
+  await page.waitForFunction(() => window.XLStudio.S.colors[1].swatches.length === 2, null, { timeout: 8000 });
+  const ask3 = await page.evaluate(() => document.querySelector('#colors .colr:nth-child(2)').innerText);
+  check(16, /add 2-3 photos at different angles/i.test(ask2) && !/add 2-3 photos at different angles/i.test(ask3), 'a color-shift film with one photo asks for more angles; the hint goes once there are two');
   await page.click('#colors .colr:nth-child(2) [data-a="cplight"][data-v="shade"]');
   const roles = await page.evaluate(() => window.XLStudio.S.colors.map(c => [c.role, c.where, c.finish]));
   check(3, JSON.stringify(roles0) === '["base","accent","accent"]' && roles[2][0] === 'parts' && /side sections/.test(roles[1][1]) && roles[1][2] === 'color shift',
@@ -165,11 +173,11 @@ try {
   const tiles = await page.evaluate(() => window.XLStudio.CL.tiles.map(t => t.color + '|' + (t.light || '')));
   check(6, JSON.stringify(tiles) === '["Exterior 1|shade","Interior 1 - Day|","Interior 1 - Night|"]' && oa.length === 3, 'renders: each exterior photo in each light, the interior by day and at night ' + JSON.stringify(tiles));
   const ex = oa.find(x => /custom paint protection film design/.test(x.prompt)), inD = oa.find(x => /interior/.test(x.prompt) && !/It is night/.test(x.prompt)), inN = oa.find(x => /It is night/.test(x.prompt));
-  check(7, ex && ex.imgs === 4 && /2008 Volvo C30 T5/.test(ex.prompt) && /Base color: wrap every painted body panel not named below in GSWF Satin White GSWF-CG-124S/.test(ex.prompt)
-    && /Accent: roof, mirrors and the side sections in the design in Paltrix Phantom White to Gold 1003-H-W07 \(its sample is image 4/.test(ex.prompt) && /Image 2 is a design concept that shows WHERE the accent film goes/.test(ex.prompt)
+  check(7, ex && ex.imgs === 5 && /2008 Volvo C30 T5/.test(ex.prompt) && /Base color: wrap every painted body panel not named below in GSWF Satin White GSWF-CG-124S/.test(ex.prompt)
+    && /Accent: roof, mirrors and the side sections in the design in Paltrix Phantom White to Gold 1003-H-W07 \(its samples are images 4 and 5 - the same film photographed at different angles/.test(ex.prompt) && /Image 2 is a design concept that shows WHERE the accent film goes/.test(ex.prompt)
     && /Brake calipers and exhaust tips: .* in Paltrix Milan Gold 1004-J-G07/.test(ex.prompt) && /open shade/.test(ex.prompt) && /Wheels: replace the wheels with the wheel shown in image 3 - its exact spoke design, spoke count, lip and center cap, in Gloss white/.test(ex.prompt) && !/wheels, tires, glass/.test(ex.prompt) && /ignore any text, labels, swatch boxes/.test(ex.prompt),
     'exterior: real photo + design layout + accent sample; every film in its place with its code ' + (ex ? ex.imgs + ' imgs' : 'none'));
-  check(8, inD && inN && inD.imgs === 2 && /All white leather/.test(inD.prompt) && /White adjustable bucket seats/.test(inD.prompt) && /waterfall center stack .* Phantom White to Gold/.test(inD.prompt) && !/Milan Gold|GSWF/.test(inD.prompt)
+  check(8, inD && inN && inD.imgs === 3 && /All white leather/.test(inD.prompt) && /White adjustable bucket seats/.test(inD.prompt) && /waterfall center stack .* Phantom White to Gold/.test(inD.prompt) && !/Milan Gold|GSWF/.test(inD.prompt)
     && /lit by white LED strips along the dash and footwells/.test(inN.prompt), 'interior: white leather, the bucket seats, the accent film on the waterfall dash; the night render shows the white lighting');
   check(9, filmCalls.length === 3 && filmCalls.some(c => /1004-J-G07 = Milan Gold, Metallic Series/.test(c.messages[0].content.map(x => x.text || '').join(' '))), 'Milan Gold is in the Paltrix catalog now (Metallic series) and research gets it as fact');
   await page.evaluate(() => document.getElementById('cl').scrollIntoView({ block: 'start' }));
@@ -178,7 +186,7 @@ try {
   await page.fill('#bd-extra', 'accent on the mirror caps too');
   await page.click('#cl-grid [data-rr="0"]');
   await page.waitForFunction(() => window.XLStudio.CL.tiles[0].status === 'done' && window.XLStudio.CL.tiles[0].k === 3, null, { timeout: 30000 });
-  check(10, oa.length === 4 && /Change for this render: accent on the mirror caps too/.test(oa[3].prompt) && oa[3].imgs === 4, 're-rendering one angle carries the change note');
+  check(10, oa.length === 4 && /Change for this render: accent on the mirror caps too/.test(oa[3].prompt) && oa[3].imgs === 5, 're-rendering one angle carries the change note');
   // save
   await page.click('#cl-grid .cl-tile[data-i="2"]');
   const dl = [];

@@ -2716,7 +2716,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1s-2026-11-25-wheelref';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1t-2026-11-25-shiftangles';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -4582,6 +4582,7 @@ function renderColors() {
     + '<div class="colr-sw">' + c.swatches.map((w, j) => '<img alt="Sample photo" width="48" height="48" src="' + w.thumb + '" data-swdel="' + j + '" title="Tap to remove">').join('')
     + '<button class="xl-add press" type="button" data-swadd>' + (c.swatches.length ? '+ Another photo' : '+ Photo of the sample') + '</button></div>'
     + (c.swatches.length ? photoLightHtml(c.photoLight, 'cplight', 'Sample photo taken in') : '')
+    + (c.finish === 'color shift' && c.swatches.length < 2 ? '<div class="plight-s need">Color shift: add 2-3 photos at different angles, or one of the sample bent over a curve, so every color it shifts through is seen.</div>' : '')
     + (S.kind === 'build' ? '<div class="bd-role">' + chips('crole', BD_ROLES, c.role || 'accent') + '</div>'
       + (c.role === 'base' || c.role === 'parts' ? '' : '<div class="xl-f bd-where"><input data-cf="where" maxlength="300" placeholder="' + (c.role === 'trim' ? 'Where inside, e.g. the waterfall dash and door trim' : 'Where it goes, e.g. roof, mirrors, the side sections in the design') + '" value="' + esc(c.where || '') + '" aria-label="Where this film goes"></div>') : '')
     + '</div>').join('');
@@ -5099,8 +5100,8 @@ async function bdRender() {
     const design = S.build.design && S.build.design.jpg ? await put(S.build.design.jpg) : -1;
     const rims = S.build.rims && S.build.rims.jpg && ext.length ? await put(S.build.rims.jpg) : -1;
     const seats = S.build.seats && S.build.seats.jpg && int.length ? await put(S.build.seats.jpg) : -1;
-    const sw = {};
-    for (const c of films) if (c.swatches[0] && c.swatches[0].jpg && slot < 24) sw[c.id] = await put(c.swatches[0].jpg);
+    const sw = {};                                           // ST1t - up to 3 photos per film (a color shift needs its angles)
+    for (const c of films) { sw[c.id] = []; for (const w of c.swatches.slice(0, 3)) if (w.jpg && slot < 24) sw[c.id].push(await put(w.jpg)); }
     const pack = scene => {                                  // the reference list for one scene, numbered from image 2
       const refs = [], num = i => { refs.push(i); return refs.length + 1; };
       const b = { scene, car: S.build.car || '', wheels: S.build.wheels || '', notes: $('ai-note').value.trim().slice(0, 500), interior: Object.assign({}, it), films: [] };
@@ -5108,7 +5109,8 @@ async function bdRender() {
       if (scene === 'exterior' && rims >= 0) b.rims = num(rims);
       if (scene !== 'exterior' && seats >= 0) b.seats = num(seats);
       films.filter(c => scene === 'exterior' ? c.role !== 'trim' : (c.role === 'trim' || c.role === 'accent')).forEach(c => b.films.push({
-        name: bdName(c), role: c.role || 'accent', where: c.where || '', spec: c.spec || null, photoLight: c.photoLight || '', img: sw[c.id] != null ? num(sw[c.id]) : 0 }));
+        name: bdName(c), role: c.role || 'accent', where: c.where || '', spec: c.spec || null, photoLight: c.photoLight || '',
+        img: sw[c.id].length ? num(sw[c.id][0]) : 0, more: sw[c.id].slice(1).map(num) }));
       return { refs, build: b };
     };
     const E = pack('exterior'), I = pack('interior'), N = pack('night');

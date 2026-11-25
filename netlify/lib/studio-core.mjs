@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1q-2026-11-25-wheelref';
+export const CORE_BUILD = 'SC1r-2026-11-25-shiftangles';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -724,6 +724,7 @@ function cleanBuild(b) {
   const films = (Array.isArray(b.films) ? b.films : []).slice(0, 6).map(f => ({
     name: clean(f && f.name, 90), where: clean(f && f.where, 300), role: BUILD_ROLES[f && f.role] ? f.role : 'accent',
     img: f && f.img >= 1 && f.img <= 16 ? Math.round(f.img) : 0,
+    more: (Array.isArray(f && f.more) ? f.more : []).map(Number).filter(x => x >= 1 && x <= 16).map(Math.round).slice(0, 2),
     spec: f && f.spec && typeof f.spec === 'object' ? validateFilm(f.spec) : null, photoLight: f && PHOTO_LIGHT[f.photoLight] ? f.photoLight : '' })).filter(f => f.name || f.img);
   const it = b.interior && typeof b.interior === 'object' ? b.interior : {};
   return { scene, car: clean(b.car, 80), films, wheels: clean(b.wheels, 120),
@@ -733,7 +734,11 @@ function cleanBuild(b) {
 }
 export function buildPrompt(raw, light) {
   const b = cleanBuild(raw), car = b.car || 'the car';
-  const filmLine = f => (f.name || 'the film') + (f.img ? ' (its sample is image ' + f.img + ' - match that exact color, finish, flake and sheen; ignore everything else in that image)' : '')
+  /* SC1r - Cole: "sometimes one photo of the ppf doesn't show the color change". Up to three photos of one film, taken at
+     different angles, ride along together so a color-shift film shows its whole range. */
+  const filmLine = f => (f.name || 'the film')
+    + (f.img && f.more.length ? ' (its samples are images ' + [f.img].concat(f.more).join(', ').replace(/, (\d+)$/, ' and $1') + ' - the same film photographed at different angles; together they show every color it shifts through: on the car, faces turned toward the viewer show one end of that range and curves turning away show the other. Match that exact range, finish, flake and sheen; ignore everything else in those images)'
+      : f.img ? ' (its sample is image ' + f.img + ' - match that exact color, finish, flake and sheen; ignore everything else in that image)' : '')
     + (f.spec ? ' - researched: ' + filmText(f.spec) : '') + (f.img && PHOTO_LIGHT[f.photoLight] ? ' (' + PHOTO_LIGHT[f.photoLight].replace(/\.$/, '').replace(/^The sample photo/, 'that sample photo') + ')' : '');
   const keep = 'Keep everything else exactly the same as image 1: the same ' + car + (b.scene === 'exterior' ? ', its exact body shape, panel gaps, proportions' : ', the exact shape of its dash, doors, console and pillars') + ', the same angle and framing, ';
   if (b.scene === 'exterior') {
@@ -770,7 +775,7 @@ export async function runRecolor({ body, store, fetchImpl, env }) {
   const list = (Array.isArray(body && body.renders) ? body.renders : []).slice(0, 120)
     .map(r => ({ k: Math.round(Number(r.k)), src: Math.round(Number(r.src)), ref: r.ref == null ? -1 : Math.round(Number(r.ref)), color: clean(r.color, 80), extra: clean(r.extra, 300),
       spec: r.spec && typeof r.spec === 'object' ? validateFilm(r.spec) : null, light: LIGHTS[r.light] ? r.light : '', photoLight: PHOTO_LIGHT[r.photoLight] ? r.photoLight : '',
-      refs: Array.isArray(r.refs) ? r.refs.slice(0, 8).map(x => Math.round(Number(x))).filter(x => x >= 0 && x < 24) : null,
+      refs: Array.isArray(r.refs) ? r.refs.slice(0, 12).map(x => Math.round(Number(x))).filter(x => x >= 0 && x < 24) : null,
       build: r.build && typeof r.build === 'object' ? r.build : null }))
     .filter(r => r.k >= 0 && r.k < 400 && r.src >= 0 && r.src < 24 && r.ref < 24 && (r.color || r.ref >= 0 || r.build));
   if (!job || !list.length) return { ok: false, error: 'nothing to render' };

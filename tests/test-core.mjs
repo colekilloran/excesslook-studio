@@ -422,10 +422,16 @@ const bst = (await C.handleApi({ method: 'GET', op: 'cl-status', query: { job: '
 check(104, oa5.length === 1 && oa5[0].n === 3 && !oa5[0].one && /Change for this render: mirror caps too/.test(oa5[0].p) && bst.status === 'done', 'a build render sends the photo plus every reference as images 1..n, with the change note');
 
 // 105-106 SC1q - Cole sent the wheel he is fitting
-check(105, C.CORE_BUILD === 'SC1q-2026-11-25-wheelref', 'core ' + C.CORE_BUILD);
+check(105, /^SC1[q-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const pw = C.buildPrompt(Object.assign({}, BX, { rims: 5 }), ''), pw2 = C.buildPrompt(Object.assign({}, BX, { rims: 5, wheels: '' }), ''), pw3 = C.buildPrompt(Object.assign({}, BX, { wheels: '' }), '');
 check(106, /replace the wheels with the wheel shown in image 5 - its exact spoke design, spoke count, lip and center cap, in gloss white/.test(pw) && !/refinish/.test(pw) && !/wheels, tires/.test(pw)
   && /in its finish/.test(pw2) && /wheels, tires/.test(pw3) && !/Wheels:/.test(pw3), 'a wheel photo swaps the wheel design in (with the finish if given); no wheel photo and no finish keeps the car\'s own wheels');
+
+// 107-108 SC1r - "sometimes one photo of the ppf doesn't show the color change"
+check(107, C.CORE_BUILD === 'SC1r-2026-11-25-shiftangles', 'core ' + C.CORE_BUILD);
+const pm3 = C.buildPrompt(Object.assign({}, BX, { films: [{ role: 'base', name: 'GSWF', img: 3 }, { role: 'accent', name: 'Phantom White to Gold', img: 4, more: [5, 6] }] }), '');
+check(108, /its samples are images 4, 5 and 6 - the same film photographed at different angles; together they show every color it shifts through/.test(pm3) && /GSWF \(its sample is image 3 -/.test(pm3),
+  'several photos of one film are named together as one film at different angles; a single photo reads as before');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
