@@ -240,6 +240,28 @@ body.st-2 .studio{grid-template-columns:minmax(0,1fr)}
 body.st-2 .ctl{max-width:760px}
 [data-kind]{display:none}
 body.k-edit [data-kind="edit"],body.k-color [data-kind="color"]{display:block}
+/* ST1r custom build: reuses the color render card; the reel-only parts hide */
+body.k-build [data-kind="color"],body.k-build [data-kind="build"]{display:block}
+body.k-build .bd-hide{display:none!important}
+.bd-only{display:none}
+body.k-build .bd-only{display:block}
+body.k-build .steps button[data-go="4"]{display:none}
+body.k-build .steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.k-build.st-3 .pv-col{display:none}
+body.k-build.st-3 .studio{grid-template-columns:minmax(0,1fr)}
+body.k-build.st-3 .ctl{max-width:980px}
+.bd-refs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bd-ref{position:relative;display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:#121217;border:1px solid var(--hair);min-height:84px}
+.bd-ref img{width:60px;height:60px;border-radius:10px;object-fit:cover;flex:none}
+.bd-ref .t{font:700 13px Montserrat,sans-serif;color:var(--text)}
+.bd-ref .s{font:500 12px/1.35 Montserrat,sans-serif;color:var(--dim);margin-top:3px}
+.bd-ref .ibtn{position:absolute;top:6px;right:6px}
+.bd-int{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-top:10px}
+.bd-int .wide{grid-column:1/-1}
+.colr .bd-role{margin-top:10px}
+.colr .bd-where{margin-top:8px}
+.cl-ph i.int{background:#5B8DEF;color:#fff}
+@media (max-width:520px){.bd-refs,.bd-int{grid-template-columns:minmax(0,1fr)}}
 .steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 20px;padding:5px;border-radius:16px;background:#121217;border:1px solid var(--hair)}
 .steps button{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 4px;border:0;border-radius:12px;background:none;color:var(--dim);font:700 12px/1 Montserrat,sans-serif;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;transition:background .2s,color .2s}
 .steps b{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;background:rgba(255,255,255,.08);color:var(--muted);flex:none}
@@ -493,6 +515,24 @@ details.memory summary::-webkit-details-marker{display:none}
       <input type="file" id="file-swatch" accept="image/*" hidden>
       <datalist id="brands"><option value="Paltrix"><option value="XPEL"><option value="3M"><option value="Avery Dennison"><option value="STEK"><option value="SunTek"><option value="Llumar"><option value="KPMF"><option value="Inozetek"><option value="Hexis"><option value="TeckWrap"><option value="Oracal"><option value="VViViD"></datalist>
 
+      <div data-kind="build">
+      <div class="bd-int" style="margin-top:18px">
+        <div class="xl-f"><label for="bd-car">The car</label><input id="bd-car" maxlength="80" placeholder="e.g. 2008 Volvo C30 T5"></div>
+        <div class="xl-f"><label for="bd-wheels">Wheels</label><input id="bd-wheels" maxlength="120" placeholder="Leave empty to keep them, or e.g. gloss white"></div>
+      </div>
+      <div class="xl-h2">REFERENCE <span style="color:var(--gold)">PHOTOS</span> <span class="ln"></span><span class="opt">Optional</span></div>
+      <div class="bd-refs" id="bd-refs"></div>
+      <input type="file" id="file-bdref" accept="image/*" hidden>
+      <div class="xl-h2">THE <span style="color:var(--gold)">INTERIOR</span> <span class="ln"></span></div>
+      <label class="chk"><input type="checkbox" id="bd-int-on"><span>Redo the interior too</span></label>
+      <div class="bd-int" id="bd-int">
+        <div class="xl-f"><label for="bd-leather">Upholstery</label><input id="bd-leather" maxlength="120" placeholder="All white leather"></div>
+        <div class="xl-f"><label for="bd-seats">Seats</label><input id="bd-seats" maxlength="160" placeholder="White adjustable bucket seats"></div>
+        <div class="xl-f wide"><label for="bd-trim">Other interior pieces</label><input id="bd-trim" maxlength="200" placeholder="e.g. door trim and console sides in the accent film"></div>
+        <div class="xl-f wide"><label for="bd-light">Accent lighting</label><input id="bd-light" maxlength="200" placeholder="e.g. white LED strips along the dash, door pockets and footwells"></div>
+      </div>
+      </div>
+
       <div class="xl-h2">DESCRIBE THE <span style="color:var(--gold)">JOB</span> <span class="ln"></span></div>
       <div class="xl-f lockable"><textarea id="ai-note" rows="3" maxlength="600" placeholder="e.g. Full front PPF on a white Model 3, satin over gloss. Show the film going on the hood and the finished car in the sun."></textarea></div>
       <div class="step-nav"><button class="xl-btn ghost press" type="button" data-go="1">Back</button><button class="xl-btn gold press" type="button" data-go="3" id="go-settings">Next: Settings</button></div>
@@ -508,15 +548,16 @@ details.memory summary::-webkit-details-marker{display:none}
 
       <div data-kind="color">
       <div class="xl-h2">CAR <span style="color:var(--gold)">ANGLES</span> <span class="ln"></span></div>
-      <div class="xl-hint" style="margin-top:0">Tap to choose which photos of the car get recolored (up to 4). With only video, the studio grabs stills from it.</div>
+      <div class="xl-hint" style="margin-top:0" id="cl-ph-hint">Tap to choose which photos of the car get recolored (up to 4). With only video, the studio grabs stills from it.</div>
       <div id="cl-photos"></div>
       <div class="xl-h2">LIGHTING <span class="ln"></span></div>
-      <div class="xl-hint" style="margin-top:0">Each color is shown in every light you pick, so people see how it really changes.</div>
+      <div class="xl-hint bd-hide" style="margin-top:0">Each color is shown in every light you pick, so people see how it really changes.</div>
+      <div class="xl-hint bd-only" style="margin-top:0">Each exterior photo is rendered in every light you pick. Interior photos render in daylight, and at night when there is accent lighting.</div>
       <div class="more-chips" id="cl-lights"></div>
-      <div class="cl-opts"><label class="chk"><input type="checkbox" id="cl-hook" checked><span>Open on the real car</span></label></div>
+      <div class="cl-opts bd-hide"><label class="chk"><input type="checkbox" id="cl-hook" checked><span>Open on the real car</span></label></div>
       </div>
 
-      <div class="lockable">
+      <div class="lockable bd-hide">
       <div class="xl-h2">TEMPLATE <span class="ln"></span></div>
       <div class="xl-seg" id="tpl-seg">
         <button data-tpl="ba">Before / After</button>
@@ -568,7 +609,8 @@ details.memory summary::-webkit-details-marker{display:none}
       </details>
       </div>
 
-      <div class="xl-h2" id="make-h">MAKE THE <span style="color:var(--gold)">REEL</span> <span class="ln"></span></div>
+      <div class="xl-h2 bd-hide" id="make-h">MAKE THE <span style="color:var(--gold)">REEL</span> <span class="ln"></span></div>
+      <div class="xl-h2 bd-only">THE <span style="color:var(--gold)">RENDERS</span> <span class="ln"></span></div>
       <div data-kind="edit">
       <div class="ai-card">
         
@@ -590,19 +632,23 @@ details.memory summary::-webkit-details-marker{display:none}
         <div class="ai-row">
           <button class="xl-btn gold press" id="cl-go" type="button">
             <svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18c1.7 0 2-1.3 2-2.2 0-1.6 1.5-2.3 2.8-2.3H18a3 3 0 003-3c0-5-4-8.5-9-8.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15" cy="8" r="1.2"/></svg>
-            Render Colors
+            <span id="cl-go-t">Render Colors</span>
           </button>
           <div class="ai-status" id="cl-st">Each render is a few cents on the shop's OpenAI account and is marked COLOR RENDER on the reel.</div>
         </div>
         <div class="prog" id="cl-prog"><div class="shim"><i id="cl-bar"></i></div><div class="prog-txt"><span id="cl-msg">Starting</span><b id="cl-pct">0%</b></div></div>
         <div class="cl-grid" id="cl-grid"></div>
-        <div class="rev-btns" id="cl-make-row" style="display:none;margin-top:14px">
+        <div class="bd-only" id="bd-after" style="margin-top:14px">
+          <div class="xl-f"><label for="bd-extra">Change for the next re-render</label><input id="bd-extra" maxlength="300" placeholder="e.g. accent on the mirror caps too, thinner stripe on the hood"></div>
+          <div class="rev-btns"><button class="xl-btn gold press" id="bd-save" type="button">Save Renders</button><span class="rules-st" id="bd-count"></span></div>
+        </div>
+        <div class="rev-btns bd-hide" id="cl-make-row" style="display:none;margin-top:14px">
           <button class="xl-btn gold press" id="cl-make" type="button">Make the Lineup</button>
           <span class="rules-st" id="cl-count"></span>
         </div>
       </div>
       </div>
-      <div class="step-nav"><button class="xl-btn ghost press" type="button" data-go="2">Back</button><button class="xl-btn gold press" type="button" data-go="4" id="go-reel">See the Reel</button></div>
+      <div class="step-nav"><button class="xl-btn ghost press" type="button" data-go="2">Back</button><button class="xl-btn gold press bd-hide" type="button" data-go="4" id="go-reel">See the Reel</button></div>
       </div>
 
       <!-- ── STEP 4: THE REEL ── -->
@@ -685,7 +731,7 @@ details.memory summary::-webkit-details-marker{display:none}
 /* ══ REEL STUDIO - lab ST1a ═══════════════════════════════════════════════ */
 (function () {
 'use strict';
-const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1q-2026-11-24-filmfetch';
+const XL_STUDIO_BUILD = window.XL_STUDIO_BUILD = 'ST1r-2026-11-25-custombuild';
 console.log('[Reel Studio] build', XL_STUDIO_BUILD);
 
 const OUT_W = 1080, OUT_H = 1920, FPS = 30, OUTRO = 2.6, SR = 48000;
@@ -2143,7 +2189,10 @@ function projState() {
     v: 1, footage, shots, tpl: S.tpl, cut: S.cut, look: Object.assign({}, S.look), title: S.title, service: S.service, cta: S.cta, tag: S.tag, music: m,
     note: $('ai-note').value,
     kind: S.kind, lights: S.lights.slice(),
-    colors: S.colors.map(c => ({ brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, photoLight: c.photoLight || '', spec: c.spec, sig: c.spec ? colorSig(c) : '', swatches: c.swatches.map(w => ({ key: w.key, name: w.name, thumb: w.thumb })) })),
+    build: { car: S.build.car || '', wheels: S.build.wheels || '', design: S.build.design ? { key: S.build.design.key, name: S.build.design.name, thumb: S.build.design.thumb } : null,
+      seats: S.build.seats ? { key: S.build.seats.key, name: S.build.seats.name, thumb: S.build.seats.thumb } : null,
+      roles: Object.assign({}, S.build.roles), interior: Object.assign({}, S.build.interior) },
+    colors: S.colors.map(c => ({ brand: c.brand, line: c.line, name: c.name, code: c.code, finish: c.finish, role: c.role || '', where: c.where || '', photoLight: c.photoLight || '', spec: c.spec, sig: c.spec ? colorSig(c) : '', swatches: c.swatches.map(w => ({ key: w.key, name: w.name, thumb: w.thumb })) })),
     ai: (S.plan || review) ? { plan: S.plan || null, usage: S.usage || null, why: $('rev-why').textContent, caption: $('rev-cap').value,
       tags: $('rev-tags').value, notes: $('rev-notes').value, meta: $('rev-meta').textContent } : null,
     len: Math.round(plan().total * 100) / 100
@@ -2210,6 +2259,7 @@ function resetStudio() {
   $('f-title').value = ''; $('f-service').value = ''; $('f-cta').value = S.cta; $('f-tag').value = S.tag;
   $('ai-note').value = '';
   S.colors = []; renderColors(); S.lights = ['shade', 'sun']; renderLights();
+  if (S.build) bdReset();
   CL.tiles = []; renderClGrid(); $('cl-make-row').style.display = 'none';
   $('review').classList.remove('on'); $('rev-why').textContent = ''; $('rev-cap').value = ''; $('rev-tags').value = ''; $('rev-notes').value = ''; $('rev-meta').textContent = '';
   $('rev-rule').checked = false;
@@ -2292,8 +2342,16 @@ async function restoreProject(p, quiet) {
         const f = fileOf(await idbGet(w.key), w);
         sw.push({ key: w.key, name: w.name, thumb: w.thumb || '', jpg: f ? (await fileThumb(f, 1024)).split(',')[1] : '' });
       }
-      addColor({ brand: c.brand || '', line: c.line || '', name: c.name || '', code: c.code || '', finish: c.finish || '', photoLight: c.photoLight || '', spec: c.spec || null, swatches: sw, research: c.spec ? 'done' : 'idle' });
+      addColor({ brand: c.brand || '', line: c.line || '', name: c.name || '', code: c.code || '', finish: c.finish || '', role: c.role || 'accent', where: c.where || '', photoLight: c.photoLight || '', spec: c.spec || null, swatches: sw, research: c.spec ? 'done' : 'idle' });
       const nc = S.colors[S.colors.length - 1]; nc.sig = c.spec ? colorSig(nc) : '';
+    }
+    bdReset();
+    if (p.build && typeof p.build === 'object') {
+      for (const k of ['design', 'seats']) { const r = p.build[k]; if (!r || !r.key) continue;
+        const f = fileOf(await idbGet(r.key), r); S.build[k] = { key: r.key, name: r.name || '', thumb: r.thumb || '', jpg: f ? (await fileThumb(f, 1536)).split(',')[1] : '' }; }
+      S.build.roles = Object.assign({}, p.build.roles || {}); S.build.car = p.build.car || ''; S.build.wheels = p.build.wheels || '';
+      S.build.interior = Object.assign(S.build.interior, p.build.interior || {});
+      bdFill();
     }
     renderColors(); renderLights();
     setStatus('', 'Opening...');
@@ -2457,6 +2515,8 @@ const KINDS = {
     ic: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><polyline points="12,7 12,12 15,14"/><path d="M4 4l3 3"/></svg>' },
   color: { name: 'Color Preview', tpl: 'walk', sub: 'This car in your PPF or vinyl colors.', color: true,
     ic: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18c1.7 0 2-1.3 2-2.2 0-1.6 1.5-2.3 2.8-2.3H18a3 3 0 003-3c0-5-4-8.5-9-8.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15" cy="8" r="1.2"/></svg>' },
+  build: { name: 'Custom Build', tpl: 'walk', sub: 'Concept renders of a whole build - film zones and interior.', build: true,
+    ic: '<svg viewBox="0 0 24 24"><path d="M3 15l2-5h14l2 5v3H3z"/><circle cx="7.5" cy="18" r="1.8"/><circle cx="16.5" cy="18" r="1.8"/><path d="M9 10l1.5-3h3L15 10"/><path d="M5 13h4M15 13h4"/></svg>' },
   promo: { name: 'Offer / Promo', tpl: 'walk', sub: 'A price or deal, big bold text.', hint: 'Reel type: Offer / Promo - bold rotating offer text one idea at a time, quick cuts, end on Book now.',
     ic: '<svg viewBox="0 0 24 24"><path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>' }
 };
@@ -2477,9 +2537,14 @@ function setKind(k, keepTpl) {
   const changed = S.kind !== k;
   S.kind = k;
   document.body.classList.toggle('k-color', k === 'color');
-  document.body.classList.toggle('k-edit', !!k && k !== 'color');
+  document.body.classList.toggle('k-build', k === 'build');
+  document.body.classList.toggle('k-edit', !!k && k !== 'color' && k !== 'build');
+  $('cl-go-t').textContent = k === 'build' ? 'Render the Build' : 'Render Colors';
+  renderColors(); renderClPhotos();
   if (k && changed && !keepTpl && !S.clips.length) setTpl(KINDS[k].tpl);
-  $('colors-hint').textContent = k === 'color'
+  $('colors-hint').textContent = k === 'build'
+    ? 'Add every film in the build and say where each one goes - base color, accent, calipers and exhaust tips, interior trim. Brand and code get the exact color; a photo of each sample (with the light it was taken in) gets it right.'
+    : k === 'color'
     ? 'Add every PPF or vinyl color you want to show on this car. Brand and color code give the closest match - the studio researches each one. A photo of the sample helps.'
     : 'Optional. Add the film you used and the reel can name it. Give the brand and code if you have it.';
   renderKinds();
@@ -2514,7 +2579,9 @@ function photoLightHtml(cur, a, title) {
 const FINISHES = [['', 'Not sure'], ['gloss', 'Gloss'], ['satin', 'Satin'], ['matte', 'Matte'], ['metallic', 'Metallic'], ['color shift', 'Color shift'], ['chrome', 'Chrome'], ['clear', 'Clear PPF']];
 function colorName(c) { return [c.brand, c.line, c.name].filter(Boolean).join(' ') || (c.spec && c.spec.color_name) || 'Color ' + (S.colors.indexOf(c) + 1); }
 function colorSig(c) { return [c.brand, c.line, c.name, c.code, c.finish, c.swatches.map(w => w.key).join(','), c.swatches.length ? (c.photoLight || '') : ''].join('|').toLowerCase(); }
-function addColor(o) { const c = Object.assign({ id: 'c' + (++colorUid), brand: '', line: '', name: '', code: '', finish: '', swatches: [], photoLight: '', spec: null, research: 'idle', sig: '', err: '' }, o || {}); S.colors.push(c); renderColors(); return c; }
+const BD_ROLES = [['base', 'Base color'], ['accent', 'Accent'], ['parts', 'Calipers + exhaust'], ['trim', 'Interior trim']];
+function addColor(o) { const c = Object.assign({ id: 'c' + (++colorUid), brand: '', line: '', name: '', code: '', finish: '', swatches: [], photoLight: '', spec: null, research: 'idle', sig: '', err: '',
+  role: S.colors.some(x => x.role === 'base') ? 'accent' : 'base', where: '' }, o || {}); S.colors.push(c); renderColors(); return c; }
 function renderColors() {
   const host = $('colors');
   host.innerHTML = S.colors.map((c, i) => '<div class="colr" data-cid="' + c.id + '">'
@@ -2529,6 +2596,8 @@ function renderColors() {
     + '<div class="colr-sw">' + c.swatches.map((w, j) => '<img alt="Sample photo" width="48" height="48" src="' + w.thumb + '" data-swdel="' + j + '" title="Tap to remove">').join('')
     + '<button class="xl-add press" type="button" data-swadd>' + (c.swatches.length ? '+ Another photo' : '+ Photo of the sample') + '</button></div>'
     + (c.swatches.length ? photoLightHtml(c.photoLight, 'cplight', 'Sample photo taken in') : '')
+    + (S.kind === 'build' ? '<div class="bd-role">' + chips('crole', BD_ROLES, c.role || 'accent') + '</div>'
+      + (c.role === 'base' || c.role === 'parts' ? '' : '<div class="xl-f bd-where"><input data-cf="where" maxlength="300" placeholder="' + (c.role === 'trim' ? 'Where inside, e.g. the waterfall dash and door trim' : 'Where it goes, e.g. roof, mirrors, the side sections in the design') + '" value="' + esc(c.where || '') + '" aria-label="Where this film goes"></div>') : '')
     + '</div>').join('');
   K.pressAll(host);
 }
@@ -2552,6 +2621,8 @@ $('colors').addEventListener('click', e => {
   if (f) { c.finish = f.dataset.v; renderColors(); return; }
   const pl = e.target.closest('[data-a="cplight"]');
   if (pl) { c.photoLight = pl.dataset.v; renderColors(); dirty(300); return; }
+  const ro = e.target.closest('[data-a="crole"]');
+  if (ro) { if (ro.dataset.v === 'base') S.colors.forEach(x => { if (x !== c && x.role === 'base') x.role = 'accent'; }); c.role = ro.dataset.v; renderColors(); dirty(300); return; }
   if (e.target.closest('[data-cdel]')) { const at = S.colors.indexOf(c); S.colors.splice(at, 1); renderColors(); K.toast('Color removed', () => { S.colors.splice(at, 0, c); renderColors(); }); return; }
   if (e.target.closest('[data-swadd]')) { swatchFor = c; $('file-swatch').value = ''; $('file-swatch').click(); return; }
   const d = e.target.closest('[data-swdel]');
@@ -2758,6 +2829,7 @@ const fk = f => f.key || f.name;
 function clImages() { return S.sources.filter(f => f.kind === 'image' && !/^render-/.test(f.name)); }   // renders are not car photos
 function clCars() { return clImages().filter(f => CL.role.get(fk(f)) === 'car'); }
 function renderClPhotos() {
+  if (S.kind === 'build') return bdRenderPhotos();
   const host = $('cl-photos'), imgs = clImages();
   [...CL.role.keys()].forEach(k => { if (!imgs.some(f => fk(f) === k)) CL.role.delete(k); });
   imgs.forEach(f => { if (!CL.role.has(fk(f))) CL.role.set(fk(f), clCars().length < 4 ? 'car' : 'off'); });
@@ -2769,6 +2841,7 @@ function renderClPhotos() {
 }
 $('cl-photos').addEventListener('click', e => {
   const b = e.target.closest('.cl-ph'); if (!b) return;
+  if (S.kind === 'build') return bdTogglePhoto(b.dataset.k);
   const k = b.dataset.k, on = CL.role.get(k) === 'car';
   if (!on && clCars().length >= 4) { toast('Up to 4 car photos', true); return; }
   CL.role.set(k, on ? 'off' : 'car');
@@ -2805,7 +2878,7 @@ function photoJpeg(src) {
   return { jpg: cv.toDataURL('image/jpeg', 0.9).split(',')[1], w: cv.width, h: cv.height };
 }
 const RR_IC = '<svg width="15" height="15" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7"/><polyline points="20,4 20,11 13,11"/></svg>';
-function tileName(t) { return t.color + (t.light ? ' - ' + LIGHT_NAMES[t.light] : '') + (CL.photos.length > 1 ? ' - ' + (t.src + 1) : ''); }
+function tileName(t) { return t.build ? t.color + (t.light ? ' - ' + LIGHT_NAMES[t.light] : '') : t.color + (t.light ? ' - ' + LIGHT_NAMES[t.light] : '') + (CL.photos.length > 1 ? ' - ' + (t.src + 1) : ''); }
 function renderClGrid() {
   const host = $('cl-grid');
   host.innerHTML = CL.tiles.map((t, i) => '<div class="cl-tile' + (t.keep ? '' : ' off') + '" role="button" tabindex="0" data-i="' + i + '" aria-label="' + esc(tileName(t)) + '">'
@@ -2815,6 +2888,7 @@ function renderClGrid() {
     + '</div>').join('');
   const done = CL.tiles.filter(t => t.status === 'done'), kept = done.filter(t => t.keep);
   $('cl-make-row').style.display = done.length ? '' : 'none';
+  $('bd-save').disabled = !kept.length; $('bd-count').textContent = CL.tiles.length ? kept.length + ' of ' + CL.tiles.length + ' to save' : '';
   $('cl-count').textContent = kept.length + ' of ' + CL.tiles.length + ' renders in';
   const settled = CL.tiles.filter(t => t.status === 'done' || t.status === 'error').length;
   if (CL.tiles.length) {
@@ -2869,6 +2943,7 @@ async function clPoll() {
   finally { CL.polling = false; $('cl-prog').classList.remove('on'); }
 }
 async function clRender() {
+  if (S.kind === 'build') return bdRender();
   const colors = S.colors.filter(c => c.brand || c.name || c.code || c.swatches.length);
   if (!colors.length) { toast('Add the colors in step 2 first', true); return; }
   if (colors.some(c => c.research === 'working')) { toast('Still looking up the films - one moment', true); return; }
@@ -2915,7 +2990,7 @@ async function clReroll(i) {
   if (t.url) URL.revokeObjectURL(t.url);
   Object.assign(t, { k: CL.nextK++, status: 'waiting', url: '', blob: null, error: '', keep: true });
   renderClGrid();
-  try { await clStart([{ k: t.k, src: t.src, ref: t.ref, color: t.color, spec: t.spec, light: t.light, photoLight: t.photoLight }]); clPoll(); }
+  try { await clStart([t.build ? { k: t.k, src: t.src, refs: t.refs, build: t.build, light: t.light, extra: $('bd-extra').value.trim() } : { k: t.k, src: t.src, ref: t.ref, color: t.color, spec: t.spec, light: t.light, photoLight: t.photoLight }]); clPoll(); }
   catch (e) { t.status = 'error'; t.error = e.message; renderClGrid(); }
 }
 async function addSource(file) {
@@ -2955,6 +3030,126 @@ async function clMake() {
   if (S.clips.length && S.kind !== 'color') K.confirm('Replace the <span>shots</span>?', 'The lineup takes the place of the ' + S.clips.length + ' shot' + (S.clips.length === 1 ? '' : 's') + ' in the reel now. Your footage stays.', go4, { okText: 'Make the Lineup' });
   else go4();
 }
+/* ══ ST1r - CUSTOM BUILD ══════════════════════════════════════════════════
+   Cole: "I have a 2008 Volvo C30 T5 that I plan to PPF with a base color and another color as the accent color that will
+   cover sections of the exterior. I am also replacing the interior with all white leather ... the waterfall dash and other
+   interior pieces will be ppf'd with the accent color ... white adjustable bucket seats ... white interior lighting in some
+   accent areas." Chose: a reusable mode, renders only. Every film has a role and a place; real photos are marked Exterior
+   or Interior; a design concept image (where the accent goes) and a seat photo ride along as references. Exterior photos
+   render in each light picked; interior photos render in daylight and, with accent lighting, at night. */
+S.build = { car: '', wheels: '', design: null, seats: null, roles: {}, interior: { on: false, leather: '', seats: '', trim: '', lighting: '' } };
+let bdRefFor = '';
+function bdReset() { S.build = { car: '', wheels: '', design: null, seats: null, roles: {}, interior: { on: false, leather: '', seats: '', trim: '', lighting: '' } }; bdFill(); }
+function bdFill() {
+  const it = S.build.interior;
+  $('bd-car').value = S.build.car || ''; $('bd-wheels').value = S.build.wheels || '';
+  $('bd-int-on').checked = !!it.on; $('bd-leather').value = it.leather; $('bd-seats').value = it.seats; $('bd-trim').value = it.trim; $('bd-light').value = it.lighting;
+  $('bd-int').style.display = it.on ? '' : 'none';
+  bdRenderRefs();
+}
+function bdRenderRefs() {
+  const slot = (k, t, s) => { const r = S.build[k];
+    return '<div class="bd-ref" data-bdref="' + k + '">' + (r ? '<img alt="" width="60" height="60" src="' + r.thumb + '"><div><div class="t">' + t + '</div><div class="s">' + esc(r.name) + '</div></div><button class="ibtn press" type="button" data-bddel="' + k + '" aria-label="Remove">' + IC.x + '</button>'
+      : '<button class="xl-add press" type="button" data-bdadd="' + k + '">+ ' + t + '</button><div class="s">' + s + '</div>') + '</div>'; };
+  $('bd-refs').innerHTML = slot('design', 'Design layout', 'A concept showing where the accent goes. Only its layout is used - colors and car come from your photos and films.')
+    + slot('seats', 'Seat photo', 'The seats you are buying, so the interior renders get their shape right.');
+  K.pressAll($('bd-refs'));
+}
+$('bd-refs').addEventListener('click', e => {
+  const a = e.target.closest('[data-bdadd]'); if (a) { bdRefFor = a.dataset.bdadd; $('file-bdref').value = ''; $('file-bdref').click(); return; }
+  const d = e.target.closest('[data-bddel]'); if (d) { S.build[d.dataset.bddel] = null; bdRenderRefs(); dirty(300); }
+});
+$('file-bdref').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f || !bdRefFor) return;
+  try { const key = fileKey(f); keepFile(key, f);
+    S.build[bdRefFor] = { key, name: f.name, thumb: await fileThumb(f, 160), jpg: (await fileThumb(f, 1536)).split(',')[1] };
+    bdRenderRefs(); dirty(300);
+  } catch (er) { toast(er.message, true); }
+});
+$('bd-car').addEventListener('input', () => { S.build.car = $('bd-car').value.trim(); dirty(800); });
+$('bd-wheels').addEventListener('input', () => { S.build.wheels = $('bd-wheels').value.trim(); dirty(800); });
+$('bd-int-on').addEventListener('change', () => { S.build.interior.on = $('bd-int-on').checked; $('bd-int').style.display = S.build.interior.on ? '' : 'none'; dirty(300); });
+[['bd-leather', 'leather'], ['bd-seats', 'seats'], ['bd-trim', 'trim'], ['bd-light', 'lighting']].forEach(([id, f]) => $(id).addEventListener('input', () => { S.build.interior[f] = $(id).value.trim(); dirty(800); }));
+function bdRole(f) { return S.build.roles[fk(f)] || 'off'; }
+function bdRenderPhotos() {
+  const host = $('cl-photos'), imgs = clImages();
+  $('cl-ph-hint').textContent = 'Tap each photo to mark it Exterior, then Interior, then not used (up to 8).';
+  if (!imgs.length) { host.innerHTML = '<div class="cl-none">Add real photos of the car in step 2 - outside from a few angles, and the interior if you are redoing it.</div>'; return; }
+  imgs.forEach(f => { if (!(fk(f) in S.build.roles)) S.build.roles[fk(f)] = imgs.filter(x => bdRole(x) !== 'off').length < 8 ? 'ext' : 'off'; });
+  host.innerHTML = '<div class="cl-photos">' + imgs.map(f => { const r = bdRole(f);
+    return '<button class="cl-ph press' + (r !== 'off' ? ' on' : '') + '" type="button" data-k="' + esc(fk(f)) + '" aria-label="' + esc(f.name) + ': ' + (r === 'ext' ? 'exterior' : r === 'int' ? 'interior' : 'not used') + '">'
+      + '<img alt="" width="58" height="58" src="' + (f.thumb || '') + '">' + (r === 'ext' ? '<i>EXT</i>' : r === 'int' ? '<i class="int">INT</i>' : '') + '<b>F' + f.fid + '</b></button>'; }).join('') + '</div>';
+}
+function bdTogglePhoto(k) {
+  const cur = S.build.roles[k] || 'off', nxt = cur === 'ext' ? 'int' : cur === 'int' ? 'off' : 'ext';
+  if (cur === 'off' && clImages().filter(x => bdRole(x) !== 'off').length >= 8) { toast('Up to 8 photos', true); return; }
+  S.build.roles[k] = nxt; bdRenderPhotos(); dirty(300);
+}
+function bdFilms() { return S.colors.filter(c => c.brand || c.name || c.code || c.swatches.length); }
+function bdName(c) { return [c.brand, c.line, c.name, c.code].filter(Boolean).join(' ') || (c.spec && c.spec.color_name) || 'Film'; }
+async function bdRender() {
+  const films = bdFilms(), it = S.build.interior;
+  if (!films.length) { toast('Add the films in step 2 first', true); return; }
+  if (films.some(c => c.research === 'working')) { toast('Still looking up the films - one moment', true); return; }
+  const imgs = clImages(), ext = imgs.filter(f => bdRole(f) === 'ext'), int = it.on ? imgs.filter(f => bdRole(f) === 'int') : [];
+  if (!ext.length && !int.length) { toast(it.on ? 'Mark at least one photo Exterior or Interior' : 'Mark at least one photo Exterior', true); return; }
+  if (!films.some(c => c.role === 'base') && ext.length) { toast('Pick which film is the base color', true); return; }
+  const lights = S.lights.length ? S.lights : ['shade'];
+  const n = ext.length * lights.length + int.length * (it.lighting ? 2 : 1);
+  if (n > 30) { toast('That is ' + n + ' renders - keep it to 30 or fewer (fewer photos or lights)', true); return; }
+  if (!(await unlock())) return;
+  const ping = await api('ping').catch(() => null);
+  if (ping && ping.json && ping.json.img === false) { $('cl-st').textContent = 'The OpenAI key is not set yet - add OPENAI_API_KEY in Netlify (excesslook-studio site settings), then redeploy.'; $('cl-st').classList.add('err'); return; }
+  $('cl-go').disabled = true; $('cl-st').classList.remove('err');
+  try {
+    CL.tiles.forEach(t => { if (t.url) URL.revokeObjectURL(t.url); });
+    CL.job = 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const photos = ext.concat(int); CL.photos = photos; CL.nextK = 0;
+    $('cl-prog').classList.add('on'); $('cl-msg').textContent = 'Sending the photos'; $('cl-bar').style.width = '2%'; $('cl-pct').textContent = '0%';
+    for (let i = 0; i < photos.length; i++) await api('cl-src', { query: { job: CL.job, i }, body: photoJpeg(photos[i]) });
+    let slot = 12;
+    const put = async jpg => { const i = slot++; await api('cl-src', { query: { job: CL.job, i }, body: { jpg, w: 1024, h: 1024 } }); return i; };
+    const design = S.build.design && S.build.design.jpg ? await put(S.build.design.jpg) : -1;
+    const seats = S.build.seats && S.build.seats.jpg && int.length ? await put(S.build.seats.jpg) : -1;
+    const sw = {};
+    for (const c of films) if (c.swatches[0] && c.swatches[0].jpg && slot < 24) sw[c.id] = await put(c.swatches[0].jpg);
+    const pack = scene => {                                  // the reference list for one scene, numbered from image 2
+      const refs = [], num = i => { refs.push(i); return refs.length + 1; };
+      const b = { scene, car: S.build.car || '', wheels: S.build.wheels || '', notes: $('ai-note').value.trim().slice(0, 500), interior: Object.assign({}, it), films: [] };
+      if (scene === 'exterior' && design >= 0) b.design = num(design);
+      if (scene !== 'exterior' && seats >= 0) b.seats = num(seats);
+      films.filter(c => scene === 'exterior' ? c.role !== 'trim' : (c.role === 'trim' || c.role === 'accent')).forEach(c => b.films.push({
+        name: bdName(c), role: c.role || 'accent', where: c.where || '', spec: c.spec || null, photoLight: c.photoLight || '', img: sw[c.id] != null ? num(sw[c.id]) : 0 }));
+      return { refs, build: b };
+    };
+    const E = pack('exterior'), I = pack('interior'), N = pack('night');
+    CL.tiles = [];
+    ext.forEach((f, i) => lights.forEach(l => CL.tiles.push({ k: CL.nextK++, src: i, refs: E.refs, build: E.build, light: l, color: 'Exterior ' + (i + 1), status: 'waiting', keep: true })));
+    int.forEach((f, j) => {
+      CL.tiles.push({ k: CL.nextK++, src: ext.length + j, refs: I.refs, build: I.build, light: '', color: 'Interior ' + (j + 1) + ' - Day', status: 'waiting', keep: true });
+      if (it.lighting) CL.tiles.push({ k: CL.nextK++, src: ext.length + j, refs: N.refs, build: N.build, light: '', color: 'Interior ' + (j + 1) + ' - Night', status: 'waiting', keep: true });
+    });
+    renderClGrid();
+    $('cl-st').textContent = 'Rendering ' + CL.tiles.length + ' - about a minute each, three at a time.';
+    const extra = $('bd-extra').value.trim();
+    await clStart(CL.tiles.map(t => ({ k: t.k, src: t.src, refs: t.refs, build: t.build, light: t.light, extra })));
+    await clPoll();
+  } catch (e) { $('cl-st').textContent = e.message || String(e); $('cl-st').classList.add('err'); toast(e.message || String(e), true); $('cl-prog').classList.remove('on'); }
+  finally { $('cl-go').disabled = false; }
+}
+async function bdSave() {
+  const kept = CL.tiles.filter(t => t.status === 'done' && t.keep && t.blob);
+  if (!kept.length) { toast('Nothing to save yet', true); return; }
+  const slug = x => String(x).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const files = kept.map(t => new File([t.blob], 'build-' + slug(t.color) + (t.light ? '-' + t.light : '') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
+  try {
+    if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files, title: 'Build renders' }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  files.forEach((f, i) => setTimeout(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, i * 350));
+  toast('Saving ' + files.length + ' render' + (files.length === 1 ? '' : 's'));
+}
+$('bd-save').addEventListener('click', bdSave);
+bdFill();
 $('cl-go').addEventListener('click', clRender);
 $('cl-make').addEventListener('click', clMake);
 renderKinds(); renderLights(); renderClPhotos();

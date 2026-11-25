@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1o-2026-11-24-filmfetch';
+export const CORE_BUILD = 'SC1p-2026-11-25-custombuild';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -422,7 +422,7 @@ export async function handleApi({ method, op, query, body, store, env }) {
   if (op === 'cl-src' && method === 'POST') {
     const job = safeId(query.job), i = Number(query.i);
     const jpg = body && typeof body.jpg === 'string' ? body.jpg : '';
-    if (!job || !(i >= 0 && i < 12)) return J(400, { error: 'bad job or photo' });
+    if (!job || !(i >= 0 && i < 24)) return J(400, { error: 'bad job or photo' });
     if (!/^[A-Za-z0-9+/=]+$/.test(jpg.slice(0, 200)) || jpg.length < 100 || jpg.length > 4500000) return J(400, { error: 'Photo missing or too big' });
     await store.setJSON(clKey(job, 'src', i), { jpg, w: Number(body.w) || 0, h: Number(body.h) || 0 });
     return J(200, { saved: true });
@@ -441,7 +441,7 @@ export async function handleApi({ method, op, query, body, store, env }) {
     return im ? J(200, im) : J(404, { error: 'not ready' });
   }
   if (op === 'cl-drop' && method === 'POST') {
-    const job = safeId(query.job), n = Math.min(400, Math.round(Number(query.n) || 0)), m = Math.min(12, Math.round(Number(query.m) || 0));
+    const job = safeId(query.job), n = Math.min(400, Math.round(Number(query.n) || 0)), m = Math.min(24, Math.round(Number(query.m) || 0));
     if (!job) return J(400, { error: 'bad job' });
     for (let k = 0; k < n; k++) { await store.delete(clKey(job, 'out', k)); await store.delete(clKey(job, 'st', k)); }
     for (let i = 0; i < m; i++) await store.delete(clKey(job, 'src', i));
@@ -680,12 +680,21 @@ async function recolorOne({ job, r, store, fetchImpl, env }) {
     if (!src || !src.jpg) throw new Error('The car photo did not arrive - try again');
     const fd = new FormData();
     fd.append('model', env.OPENAI_IMAGE_MODEL || IMAGE_MODEL);
+    const blob = b64 => new Blob([Buffer.from(b64, 'base64')], { type: 'image/jpeg' });
+    if (r.build) {
+      // SC1p - image 1 is the car photo, images 2.. are r.refs in order; the build names them by number
+      const refs = [];
+      for (const i of r.refs || []) { const x = await store.get(clKey(job, 'src', i), { type: 'json' }); if (!(x && x.jpg)) throw new Error('A reference photo did not arrive - try again'); refs.push(x); }
+      fd.append('prompt', buildPrompt(r.build, r.light) + (r.extra ? ' Change for this render: ' + clean(r.extra, 300) : ''));
+      fd.append('image[]', blob(src.jpg), 'photo.jpg');
+      refs.forEach((x, n) => fd.append('image[]', blob(x.jpg), 'ref' + (n + 2) + '.jpg'));
+    } else {
     const ref = r.ref >= 0 ? await store.get(clKey(job, 'src', r.ref), { type: 'json' }) : null;
     if (r.ref >= 0 && !(ref && ref.jpg)) throw new Error('The swatch photo did not arrive - try again');
     fd.append('prompt', recolorPrompt(r.color, !!ref, r.spec, r.light, r.photoLight) + (r.extra ? ' ' + clean(r.extra, 300) : ''));
-    const blob = b64 => new Blob([Buffer.from(b64, 'base64')], { type: 'image/jpeg' });
     if (ref) { fd.append('image[]', blob(src.jpg), 'car.jpg'); fd.append('image[]', blob(ref.jpg), 'swatch.jpg'); }
     else fd.append('image', blob(src.jpg), 'car.jpg');
+    }
     fd.append('size', renderSize(src.w, src.h));
     fd.append('quality', env.OPENAI_IMAGE_QUALITY || 'medium');
     fd.append('output_format', 'jpeg');
@@ -702,12 +711,66 @@ async function recolorOne({ job, r, store, fetchImpl, env }) {
     await store.setJSON(clKey(job, 'st', k), { status: 'error', color: r.color, src: r.src, error: clean(e && e.message || e, 300) });
   }
 }
+/* ══ SC1p - CUSTOM BUILD ══════════════════════════════════════════════════
+   Cole: "I have a 2008 Volvo C30 T5 that I plan to PPF with a base color and another color as the accent color that will
+   cover sections of the exterior. I am also replacing the interior with all white leather ... the waterfall dash and
+   other interior pieces will be ppf'd with the accent color ... white adjustable bucket seats ... white interior lighting
+   in some accent areas." A build has films, each in a zone, plus an interior plan. Each render edits one real photo with
+   the reference images riding along (design layout, seats, a photo of each film), each named by its image number. */
+export const BUILD_ROLES = { base: 'base color - every painted body panel not named for another film', accent: 'accent', parts: 'brake calipers and exhaust tips', trim: 'interior trim' };
+function cleanBuild(b) {
+  b = b && typeof b === 'object' ? b : {};
+  const scene = ['exterior', 'interior', 'night'].includes(b.scene) ? b.scene : 'exterior';
+  const films = (Array.isArray(b.films) ? b.films : []).slice(0, 6).map(f => ({
+    name: clean(f && f.name, 90), where: clean(f && f.where, 300), role: BUILD_ROLES[f && f.role] ? f.role : 'accent',
+    img: f && f.img >= 1 && f.img <= 16 ? Math.round(f.img) : 0,
+    spec: f && f.spec && typeof f.spec === 'object' ? validateFilm(f.spec) : null, photoLight: f && PHOTO_LIGHT[f.photoLight] ? f.photoLight : '' })).filter(f => f.name || f.img);
+  const it = b.interior && typeof b.interior === 'object' ? b.interior : {};
+  return { scene, car: clean(b.car, 80), films, wheels: clean(b.wheels, 120),
+    design: b.design >= 1 && b.design <= 16 ? Math.round(b.design) : 0, seats: b.seats >= 1 && b.seats <= 16 ? Math.round(b.seats) : 0,
+    interior: { on: !!it.on, leather: clean(it.leather, 120), seats: clean(it.seats, 160), trim: clean(it.trim, 200), lighting: clean(it.lighting, 200) },
+    notes: clean(b.notes, 500) };
+}
+export function buildPrompt(raw, light) {
+  const b = cleanBuild(raw), car = b.car || 'the car';
+  const filmLine = f => (f.name || 'the film') + (f.img ? ' (its sample is image ' + f.img + ' - match that exact color, finish, flake and sheen; ignore everything else in that image)' : '')
+    + (f.spec ? ' - researched: ' + filmText(f.spec) : '') + (f.img && PHOTO_LIGHT[f.photoLight] ? ' (' + PHOTO_LIGHT[f.photoLight].replace(/\.$/, '').replace(/^The sample photo/, 'that sample photo') + ')' : '');
+  const keep = 'Keep everything else exactly the same as image 1: the same ' + car + (b.scene === 'exterior' ? ', its exact body shape, panel gaps, proportions' : ', the exact shape of its dash, doors, console and pillars') + ', the same angle and framing, ';
+  if (b.scene === 'exterior') {
+    const base = b.films.find(f => f.role === 'base'), others = b.films.filter(f => f !== base && f.role !== 'trim');
+    const lines = [];
+    if (base) lines.push('Base color: wrap every painted body panel not named below in ' + filmLine(base) + '.');
+    others.forEach(f => lines.push((f.role === 'parts' ? 'Brake calipers and exhaust tips' : 'Accent') + ': ' + (f.where || BUILD_ROLES[f.role]) + ' in ' + filmLine(f) + '.'));
+    return 'Edit image 1, a real photo of ' + car + ', into a photo of the same car with this custom paint protection film design. ' + lines.join(' ')
+      + (b.wheels ? ' Wheels: refinish the wheels in ' + b.wheels + ' - the same wheel design, spokes and size, only the finish changes.' : '')
+      + (b.design ? ' Image ' + b.design + ' is a design concept that shows WHERE the accent film goes - copy only its layout of the accent sections onto this car; its colors are wrong and its car is not accurate, so take colors only from the film samples and the car only from image 1. It may be a collage: ignore any text, labels, swatch boxes and panel borders in it.' : '')
+      + ' Color-shift films change color with the viewing angle across the body curves. ' + keep
+      + (b.wheels ? '' : 'wheels, ') + 'tires, glass and window tint, lights, badges, grille, black trim, license plate, background' + (light && LIGHTS[light] ? ' and ground. ' + LIGHTS[light] + ' ' : ', ground, lighting and shadows. ')
+      + (b.notes ? 'Owner notes: ' + b.notes + ' ' : '') + 'Photorealistic, like a real photo of the finished car. No text, no watermark, no added objects.';
+  }
+  const trim = b.films.filter(f => f.role === 'trim' || f.role === 'accent');
+  const i = b.interior;
+  const parts = [
+    'Re-trim the whole interior in ' + (i.leather || 'white leather') + ' - seats, door cards, armrests, center console, dash top, headliner where it shows - with matching stitching.',
+    'Seats: ' + (i.seats || 'white bucket seats') + (b.seats ? ' - shaped exactly like the seats in image ' + b.seats + ' (use their shape, bolsters and adjusters; make them this color)' : '') + '.',
+    trim.length ? 'Cover ' + (trim.map(f => (f.where && f.role === 'trim' ? f.where : 'the floating waterfall center stack and the interior trim pieces') + ' in ' + filmLine(f)).join('; ')) + '.' : '',
+    i.trim ? 'Also: ' + i.trim + '.' : ''
+  ].filter(Boolean).join(' ');
+  const night = b.scene === 'night';
+  return 'Edit image 1, a real photo of the interior of ' + car + ', into a photo of the same interior after a custom build. ' + parts + ' '
+    + (night ? 'It is night: the cabin is dark and lit by ' + (i.lighting || 'soft white accent lighting') + ' - glowing strips and pools of white light, no other color of light. '
+      : (i.lighting ? 'The white accent lighting (' + i.lighting + ') is installed but only softly visible in daylight. ' : ''))
+    + keep + 'the steering wheel shape, gauges, screens, controls, windows and the view outside' + (night ? '' : ', and the daylight') + '. '
+    + (b.notes ? 'Owner notes: ' + b.notes + ' ' : '') + 'Photorealistic, like a real photo of the finished interior. No text, no watermark, no people.';
+}
 export async function runRecolor({ body, store, fetchImpl, env }) {
   const job = safeId(body && body.job);
   const list = (Array.isArray(body && body.renders) ? body.renders : []).slice(0, 120)
     .map(r => ({ k: Math.round(Number(r.k)), src: Math.round(Number(r.src)), ref: r.ref == null ? -1 : Math.round(Number(r.ref)), color: clean(r.color, 80), extra: clean(r.extra, 300),
-      spec: r.spec && typeof r.spec === 'object' ? validateFilm(r.spec) : null, light: LIGHTS[r.light] ? r.light : '', photoLight: PHOTO_LIGHT[r.photoLight] ? r.photoLight : '' }))
-    .filter(r => r.k >= 0 && r.k < 400 && r.src >= 0 && r.src < 12 && r.ref < 12 && (r.color || r.ref >= 0));
+      spec: r.spec && typeof r.spec === 'object' ? validateFilm(r.spec) : null, light: LIGHTS[r.light] ? r.light : '', photoLight: PHOTO_LIGHT[r.photoLight] ? r.photoLight : '',
+      refs: Array.isArray(r.refs) ? r.refs.slice(0, 8).map(x => Math.round(Number(x))).filter(x => x >= 0 && x < 24) : null,
+      build: r.build && typeof r.build === 'object' ? r.build : null }))
+    .filter(r => r.k >= 0 && r.k < 400 && r.src >= 0 && r.src < 24 && r.ref < 24 && (r.color || r.ref >= 0 || r.build));
   if (!job || !list.length) return { ok: false, error: 'nothing to render' };
   if (!env.OPENAI_API_KEY) {
     for (const r of list) await store.setJSON(clKey(job, 'st', r.k), { status: 'error', color: r.color, src: r.src, error: 'OPENAI_API_KEY is not set in Netlify' });
@@ -748,7 +811,7 @@ const FILM_BRIEF = 'You research automotive wrap and paint protection films for 
   + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com, paltrixppf.com and so on), then installer galleries and reviews for how it really looks on cars. '
   + 'Work out the finish, the base color, any metallic flake (its color and size), any color shift and the angles, and how it reads in sun, shade, overcast and at night. '
   + 'If the owner attached a photo of the sample, use it to confirm and fine-tune the color, but trust the manufacturer\'s data over a photo taken under shop lights. '
-  + 'Paltrix (paltrixppf.com) codes read series - series letter - color family + number, e.g. 1002-C-A31 = Solid Color Series, grey family, High Gloss Cement Grey. Series: 1002-C Solid (gloss), 1003-H Chameleon / color shift, 1005-Y Matte and Satin, 1006-Z Pearl / metallic, 1007-F Carbon Fiber, 1008-L Laser. '
+  + 'Paltrix (paltrixppf.com) codes read series - series letter - color family + number, e.g. 1002-C-A31 = Solid Color Series, grey family, High Gloss Cement Grey. Series: 1002-C Solid (gloss), 1003-H Chameleon / color shift, 1004-J and 2004-J Metallic, 1005-Y Matte and Satin, 1006-Z Pearl / metallic, 1007-F Carbon Fiber, 1008-L Laser. '
   + 'When the request says the Paltrix code is in their catalog, that name and series are certain - never call the code unrecognized or a bad format; find its page on paltrixppf.com for photos of the film. '
   + 'Clear films (like XPEL Stealth or any clear satin / gloss PPF) do not change the paint color - say so with clear = true. '
   + 'Open the maker\'s product page with web_fetch when you have its address. Write in US English (color, not colour). Keep note under 500 characters. '
@@ -762,6 +825,8 @@ export const PALTRIX_SERIES = {
   '1003-H': { name: 'Chameleon Series', page: 'chameleon', finish: 'color shift', card: 'color shift' },
   '1005-Y': { name: 'Matte Series', page: 'matte', finish: 'matte', card: 'matte' },
   '1006-Z': { name: 'Pearl Series', page: 'pearl', finish: 'pearl', card: 'metallic' },
+  '1004-J': { name: 'Metallic Series', page: 'metallic', finish: 'metallic gloss', card: 'metallic' },
+  '2004-J': { name: 'Metallic Series', page: 'metallic', finish: 'metallic gloss', card: 'metallic' },
   '1007-F': { name: 'Carbon Fiber Series', page: 'carbon', finish: 'carbon', card: '' },
   '1008-L': { name: 'Laser Series', page: 'chameleon', finish: 'color shift', card: 'color shift' }
 };
@@ -916,6 +981,33 @@ export const PALTRIX_COLORS = Object.fromEntries(`
 1003-H-W09|Twilight White
 1003-H-B01|Yuanfeng Blue Charm Gold
 1007-F-B01|Black Carbon Fiber
+1004-J-S09|Alexander Silver
+1004-J-S17|Tungsten Steel (Purple)
+2004-J-V04|BMW Purple
+2004-J-U08|Glacier Blue
+1004-J-S01|Gt Silver
+1004-J-P01|Ice Berry Pink
+2004-J-C02|Liquid Metal Bronze
+2004-J-U10|Liquid Metal Lake Blue
+1004-J-U05|Crystal Diamond Blue
+2004-J-N02|Francesca Green
+2004-J-S18|Liquid Dark Silver
+1004-J-R06|Liquid Metal Charming Red
+2004-J-S11|Liquid Metal Grey
+2004-J-U11|Liquid Metal Grise Cyan
+2004-J-P03|Liquid Metal Jedi Pink
+2004-J-C01|Liquid Metal Loganberry
+2004-J-S04|Liquid Metal Silver
+2004-J-U06|Liquid Metal Somato Blue
+2004-J-S21|Liquid Metallic Gunmetal Gray
+1004-J-U07|Metallic Fog Blue
+2004-J-S06|Metallic Gunmetal Grey
+1004-J-G07|Milan Gold
+1004-J-S19|Moonlight Lime (Mercedes-Benz)
+2004-J-V05|Rosemary Purple
+1004-J-U13|Sepang Blue (Audi)
+2004-J-G06|Victor Silver
+1004-J-V06|Xiaguang Purple (Xiaomi)
 1008-L-B01|Laser Black
 `.trim().split('\n').map(l => l.split('|')));
 const pNorm = v => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

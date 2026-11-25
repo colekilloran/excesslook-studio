@@ -361,7 +361,7 @@ check(89, oa4.length === 1 && /Nardo Grey/.test(oa4[0]) && /DIRECT SUNLIGHT/.tes
 // 90-95 SC1n Paltrix catalog - Cole sent paltrixppf.com: "High Gloss Cement Grey 1002-C-A31"
 check(90, /^SC1[n-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const dz = C.decodePaltrix('Paltrix', '1002-C-A31');
-check(91, Object.keys(C.PALTRIX_COLORS).length === 150 && dz.name === 'High Gloss Cement Grey' && dz.series === 'Solid Color Series' && dz.finish === 'gloss' && dz.family === 'grey'
+check(91, Object.keys(C.PALTRIX_COLORS).length >= 150 && dz.name === 'High Gloss Cement Grey' && dz.series === 'Solid Color Series' && dz.finish === 'gloss' && dz.family === 'grey'
   && C.decodePaltrix('', '1002 c a31').code === '1002-C-A31' && C.decodePaltrix('Paltrix', '1005-Y-V07').finish === 'satin' && C.decodePaltrix('Paltrix', '1006-Z-L02').finish === 'color shift'
   && C.decodePaltrix('Paltrix', '', 'high gloss cement grey').code === '1002-C-A31' && C.decodePaltrix('XPEL', '1002-C-A31') === null && C.decodePaltrix('', 'S261') === null && C.decodePaltrix('Paltrix', 'P701G') === null
   && C.decodePaltrix('Paltrix', '1002-C-Z99').known === false,
@@ -383,7 +383,7 @@ check(94, vc.brand === 'Paltrix' && vc.chips[0].name === 'High Gloss Cement Grey
 check(95, /1002-C-A31/.test(C.CARD_BRIEF) && !/P701G/.test(C.CARD_BRIEF), 'card reader brief knows the real Paltrix format');
 
 // 96-99 SC1o - "I could not open the paltrixppf.com page for 1002-C-A31 through search", the note cut off mid-word, "colour"
-check(96, C.CORE_BUILD === 'SC1o-2026-11-24-filmfetch', 'core ' + C.CORE_BUILD);
+check(96, /^SC1[o-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const fq = C.filmRequest({ brand: 'Paltrix', code: '1002-C-A31' }, env), fqt = fq.messages[0].content.map(x => x.text || '').join(' ');
 check(97, fq.tools.some(t => t.type === 'web_fetch_20250910' && t.name === 'web_fetch' && t.max_uses > 0) && fqt.includes('https://paltrixppf.com/colors/solid/update/high-gloss-cement-grey/') && /web_fetch/.test(fq.system) && /US English/.test(fq.system),
   'research can open pages and is given the exact Paltrix product page (the one Cole sent)');
@@ -394,6 +394,32 @@ await C.runFilm({ body: { id: 'w1', brand: 'Paltrix', code: '1002-C-A31' }, stor
 const w1 = (await C.handleApi({ method: 'GET', op: 'film', query: { id: 'w1' }, store: fs4, env })).json;
 check(98, hdrs[0]['anthropic-beta'] === 'web-fetch-2025-09-10' && w1.searches === 1, 'the web fetch beta header is sent and a page open counts as a lookup');
 check(99, /the end$/.test(w1.spec.note) && !/colour/i.test(JSON.stringify(w1.spec)) && /Cool blue-grey color/.test(w1.spec.base_color) && /Colors lift/.test(w1.spec.lighting.sun), 'a long note is kept whole and the wording is US spelling (color)');
+
+// 100-104 SC1p Custom Build - Cole's C30: GSWF Satin White base, Paltrix Phantom White to Gold accent, Milan Gold calipers / tips,
+// gloss white rims, all-white leather interior with white buckets, accent film on the waterfall dash, white accent lighting
+check(100, C.CORE_BUILD === 'SC1p-2026-11-25-custombuild', 'core ' + C.CORE_BUILD);
+check(101, C.decodePaltrix('Paltrix', '1004-J-G07').name === 'Milan Gold' && C.decodePaltrix('Paltrix', '1004-J-G07').series === 'Metallic Series' && C.decodePaltrix('', '2004-J-S06').name === 'Metallic Gunmetal Grey'
+  && C.decodePaltrix('Paltrix', '1003-H-W07').name === 'Phantom White to Gold', 'Paltrix Metallic series (1004-J / 2004-J) is in the catalog');
+const BX = { scene: 'exterior', car: '2008 Volvo C30 T5', wheels: 'gloss white', design: 2, films: [
+  { role: 'base', name: 'GSWF Satin White GSWF-CG-124S', img: 3, photoLight: 'sun' }, { role: 'accent', name: 'Paltrix Phantom White to Gold 1003-H-W07', where: 'hood center, mirrors, side sweep', img: 4 },
+  { role: 'parts', name: 'Paltrix Milan Gold 1004-J-G07' }, { role: 'trim', name: 'Should not be outside', where: 'dash' }],
+  interior: { on: true, leather: 'all white leather', seats: 'white adjustable bucket seats', lighting: 'white LED strips' } };
+const px = C.buildPrompt(BX, 'shade');
+check(102, /Base color: wrap every painted body panel not named below in GSWF Satin White GSWF-CG-124S \(its sample is image 3/.test(px) && /DIRECT SUNLIGHT/.test(px) && /Accent: hood center, mirrors, side sweep in Paltrix Phantom White to Gold/.test(px)
+  && /Brake calipers and exhaust tips: brake calipers and exhaust tips in Paltrix Milan Gold 1004-J-G07\./.test(px) && /Wheels: refinish the wheels in gloss white/.test(px) && !/wheels, tires/.test(px)
+  && /Image 2 is a design concept/.test(px) && /ignore any text, labels/.test(px) && !/Should not be outside/.test(px) && /Relight the scene as open shade/.test(px) && !/\.\./.test(px),
+  'exterior prompt: base, accent with its place, calipers + tips, wheels refinished, design used for layout only, interior films left out');
+const pi = C.buildPrompt(Object.assign({}, BX, { scene: 'interior', seats: 2, films: [{ role: 'accent', name: 'Paltrix Phantom White to Gold 1003-H-W07', img: 3 }] }));
+const pn = C.buildPrompt(Object.assign({}, BX, { scene: 'night', films: [] }));
+check(103, /interior of 2008 Volvo C30 T5/.test(pi) && /Re-trim the whole interior in all white leather/.test(pi) && /white adjustable bucket seats - shaped exactly like the seats in image 2/.test(pi) && /waterfall center stack .* Phantom White to Gold/.test(pi)
+  && /exact shape of its dash/.test(pi) && !/panel gaps/.test(pi) && !/It is night/.test(pi) && /It is night: the cabin is dark and lit by white LED strips/.test(pn) && /no other color of light/.test(pn),
+  'interior prompts: white leather, the seats from the photo, accent film on the waterfall dash; the night one is lit only by the white lighting');
+const oa5 = [], st5 = fakeStore();
+for (const i of [0, 12, 13]) await C.handleApi({ method: 'POST', op: 'cl-src', query: { job: 'bj', i: String(i) }, body: { jpg: 'QUJD'.repeat(100), w: 1600, h: 1200 }, store: st5, env });
+await C.runRecolor({ body: { job: 'bj', renders: [{ k: 0, src: 0, refs: [12, 13], build: BX, light: 'shade', extra: 'mirror caps too' }] }, store: st5, env: envImg,
+  fetchImpl: async (u, o) => { oa5.push({ p: o.body.get('prompt'), n: o.body.getAll('image[]').length, one: o.body.get('image') }); return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'QUJD' }] }) }; } });
+const bst = (await C.handleApi({ method: 'GET', op: 'cl-status', query: { job: 'bj', ks: '0' }, store: st5, env })).json.renders[0];
+check(104, oa5.length === 1 && oa5[0].n === 3 && !oa5[0].one && /Change for this render: mirror caps too/.test(oa5[0].p) && bst.status === 'done', 'a build render sends the photo plus every reference as images 1..n, with the change note');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);
