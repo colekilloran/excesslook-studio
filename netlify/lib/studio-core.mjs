@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1r-2026-11-25-shiftangles';
+export const CORE_BUILD = 'SC1s-2026-11-25-gswf';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -815,11 +815,12 @@ export const FILM_TOOL = {
   }
 };
 const FILM_BRIEF = 'You research automotive wrap and paint protection films for Excess Look Auto Solutions, a detailing and PPF shop. '
-  + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com, paltrixppf.com and so on), then installer galleries and reviews for how it really looks on cars. '
+  + 'Find the exact product the owner names (brand, product line, color name, color code) on the manufacturer\'s own site first (xpel.com, 3m.com, averydennison.com, stekautomotive.com, suntek, kpmf.com, inozetek.com, hexis-graphics.com, paltrixppf.com, gswf.com and so on), then installer galleries and reviews for how it really looks on cars. '
   + 'Work out the finish, the base color, any metallic flake (its color and size), any color shift and the angles, and how it reads in sun, shade, overcast and at night. '
   + 'If the owner attached a photo of the sample, use it to confirm and fine-tune the color, but trust the manufacturer\'s data over a photo taken under shop lights. '
   + 'Paltrix (paltrixppf.com) codes read series - series letter - color family + number, e.g. 1002-C-A31 = Solid Color Series, grey family, High Gloss Cement Grey. Series: 1002-C Solid (gloss), 1003-H Chameleon / color shift, 1004-J and 2004-J Metallic, 1005-Y Matte and Satin, 1006-Z Pearl / metallic, 1007-F Carbon Fiber, 1008-L Laser. '
   + 'When the request says the Paltrix code is in their catalog, that name and series are certain - never call the code unrecognized or a bad format; find its page on paltrixppf.com for photos of the film. '
+  + 'GSWF color PPF (gswf.com/infused-color-ppf/ - their Infused Color PPF, sold as ChromaGuard) labels each color like GSWF-CG-124S (Satin White); the page lists the colors by name with a product photo each - open it with web_fetch and match by name. '
   + 'Clear films (like XPEL Stealth or any clear satin / gloss PPF) do not change the paint color - say so with clear = true. '
   + 'Open the maker\'s product page with web_fetch when you have its address. Write in US English (color, not colour). Keep note under 500 characters. '
   + 'Never invent a code. If you cannot find the product, say so in note and set confidence to estimate. Then call submit_film once.';
