@@ -430,12 +430,20 @@ check(106, /replace the wheels with the wheel shown in image 5 - its exact spoke
 // 107-108 SC1r - "sometimes one photo of the ppf doesn't show the color change"
 check(107, /^SC1[r-z]-/.test(C.CORE_BUILD), 'core ' + C.CORE_BUILD);
 const pm3 = C.buildPrompt(Object.assign({}, BX, { films: [{ role: 'base', name: 'GSWF', img: 3 }, { role: 'accent', name: 'Phantom White to Gold', img: 4, more: [5, 6] }] }), '');
-check(108, /its samples are images 4, 5 and 6 - the same film photographed at different angles; together they show every color it shifts through/.test(pm3) && /GSWF \(its sample is image 3 -/.test(pm3),
+check(108, /its samples are image 4, image 5 and image 6 - the same film photographed at different angles; together they show every color it shifts through/.test(pm3) && /GSWF \(its sample is image 3 -/.test(pm3),
   'several photos of one film are named together as one film at different angles; a single photo reads as before');
 
 // 109 SC1s - Cole sent gswf.com/infused-color-ppf/ with Satin White GSWF-CG-124S
 const gq = C.filmRequest({ brand: 'GSWF', name: 'Satin White', code: 'GSWF-CG-124S' }, env).system;
-check(109, C.CORE_BUILD === 'SC1s-2026-11-25-gswf' && /gswf\.com\/infused-color-ppf\//.test(gq) && /GSWF-CG-124S \(Satin White\)/.test(gq), 'research knows GSWF\'s color PPF page and code format');
+check(109, /^SC1[s-z]-/.test(C.CORE_BUILD) && /gswf\.com\/infused-color-ppf\//.test(gq) && /GSWF-CG-124S \(Satin White\)/.test(gq), 'research knows GSWF\'s color PPF page and code format');
+
+// 110-111 SC1t - "the color shift barely shows in shade sometimes and needs the direct sunlight"
+check(110, C.CORE_BUILD === 'SC1t-2026-11-25-photolights', 'core ' + C.CORE_BUILD);
+const sh = f => C.buildPrompt(Object.assign({}, BX, { films: [{ role: 'base', name: 'GSWF', img: 3 }, Object.assign({ role: 'accent', name: 'Phantom', img: 4 }, f)] }), '');
+const q1 = sh({ more: [5], lights: ['shade', 'sun'] }), q2 = sh({ more: [5], lights: ['sun', 'sun'] }), q3 = sh({ more: [5], lights: ['shade', 'overcast'] }), q4 = sh({ lights: ['sun'] });
+check(111, /image 4 \(open shade\) and image 5 \(direct sun\)/.test(q1) && /true base color and how light or dark it is from the shade \/ overcast photos; the direct-sun photos show the color shift and flake at their strongest/.test(q1)
+  && /All were taken in direct sun: the shift shows best there, but the film itself is darker/.test(q2) && !/direct-sun photos|All were taken/.test(q3) && /DIRECT SUNLIGHT/.test(q4),
+  'mixed shade + sun photos: base color from shade, shift from sun; all-sun reads darker; one sun photo keeps the sun correction');
 
 console.log('\n' + (fail ? 'RESULT FAIL' : 'RESULT PASS') + ' (' + pass + ' pass, ' + fail + ' fail)');
 process.exit(fail ? 1 : 0);

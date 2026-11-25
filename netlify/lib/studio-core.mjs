@@ -3,7 +3,7 @@
 // dependencies (store, fetch, env) as arguments, so the tests can run them
 // with fakes. The Netlify function files are thin wrappers.
 
-export const CORE_BUILD = 'SC1s-2026-11-25-gswf';
+export const CORE_BUILD = 'SC1t-2026-11-25-photolights';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MAX_FRAMES = 72;
@@ -725,6 +725,7 @@ function cleanBuild(b) {
     name: clean(f && f.name, 90), where: clean(f && f.where, 300), role: BUILD_ROLES[f && f.role] ? f.role : 'accent',
     img: f && f.img >= 1 && f.img <= 16 ? Math.round(f.img) : 0,
     more: (Array.isArray(f && f.more) ? f.more : []).map(Number).filter(x => x >= 1 && x <= 16).map(Math.round).slice(0, 2),
+    lights: (Array.isArray(f && f.lights) ? f.lights : []).slice(0, 3).map(x => PHOTO_LIGHT[x] ? x : ''),
     spec: f && f.spec && typeof f.spec === 'object' ? validateFilm(f.spec) : null, photoLight: f && PHOTO_LIGHT[f.photoLight] ? f.photoLight : '' })).filter(f => f.name || f.img);
   const it = b.interior && typeof b.interior === 'object' ? b.interior : {};
   return { scene, car: clean(b.car, 80), films, wheels: clean(b.wheels, 120),
@@ -736,10 +737,23 @@ export function buildPrompt(raw, light) {
   const b = cleanBuild(raw), car = b.car || 'the car';
   /* SC1r - Cole: "sometimes one photo of the ppf doesn't show the color change". Up to three photos of one film, taken at
      different angles, ride along together so a color-shift film shows its whole range. */
+  /* SC1t - Cole: "the color shift barely shows in shade sometimes and needs the direct sunlight". Each photo of a film
+     carries its own light: shade / overcast photos set the true base color, direct-sun photos show the shift and flake. */
+  const LN = { sun: 'direct sun', shade: 'open shade', overcast: 'overcast', studio: 'shop lights', night: 'night' };
+  const multi = f => {
+    const ims = [f.img].concat(f.more), ls = ims.map((x, i) => f.lights[i] || (i === 0 ? f.photoLight : '') || '');
+    const list = ims.map((x, i) => 'image ' + x + (LN[ls[i]] ? ' (' + LN[ls[i]] + ')' : '')).join(', ').replace(/, (image [^,]+)$/, ' and $1');
+    const sun = ls.filter(x => x === 'sun').length, soft = ls.filter(x => x === 'shade' || x === 'overcast').length;
+    return ' (its samples are ' + list + ' - the same film photographed at different angles; together they show every color it shifts through: on the car, faces turned toward the viewer show one end of that range and curves turning away show the other.'
+      + (sun && soft ? ' Take the true base color and how light or dark it is from the shade / overcast photos; the direct-sun photos show the color shift and flake at their strongest - use them for which colors it shifts to and how strongly, not for how light it is.'
+        : sun ? ' All were taken in direct sun: the shift shows best there, but the film itself is darker and richer than these photos look.' : '')
+      + ' Match that exact range, finish, flake and sheen; ignore everything else in those images)';
+  };
   const filmLine = f => (f.name || 'the film')
-    + (f.img && f.more.length ? ' (its samples are images ' + [f.img].concat(f.more).join(', ').replace(/, (\d+)$/, ' and $1') + ' - the same film photographed at different angles; together they show every color it shifts through: on the car, faces turned toward the viewer show one end of that range and curves turning away show the other. Match that exact range, finish, flake and sheen; ignore everything else in those images)'
+    + (f.img && f.more.length ? multi(f)
       : f.img ? ' (its sample is image ' + f.img + ' - match that exact color, finish, flake and sheen; ignore everything else in that image)' : '')
-    + (f.spec ? ' - researched: ' + filmText(f.spec) : '') + (f.img && PHOTO_LIGHT[f.photoLight] ? ' (' + PHOTO_LIGHT[f.photoLight].replace(/\.$/, '').replace(/^The sample photo/, 'that sample photo') + ')' : '');
+    + (f.spec ? ' - researched: ' + filmText(f.spec) : '')
+    + (f.img && !f.more.length && PHOTO_LIGHT[f.lights[0] || f.photoLight] ? ' (' + PHOTO_LIGHT[f.lights[0] || f.photoLight].replace(/\.$/, '').replace(/^The sample photo/, 'that sample photo') + ')' : '');
   const keep = 'Keep everything else exactly the same as image 1: the same ' + car + (b.scene === 'exterior' ? ', its exact body shape, panel gaps, proportions' : ', the exact shape of its dash, doors, console and pillars') + ', the same angle and framing, ';
   if (b.scene === 'exterior') {
     const base = b.films.find(f => f.role === 'base'), others = b.films.filter(f => f !== base && f.role !== 'trim');

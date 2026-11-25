@@ -134,6 +134,14 @@ try {
   await page.setInputFiles('#file-swatch', path.join(FIX, 'design.jpg'));
   await page.waitForFunction(() => window.XLStudio.S.colors[1].swatches.length === 2, null, { timeout: 8000 });
   const ask3 = await page.evaluate(() => document.querySelector('#colors .colr:nth-child(2)').innerText);
+  // ST1v - each photo has its own light
+  const rows = await page.evaluate(() => [...document.querySelectorAll('#colors .colr:nth-child(2) [data-swi]')].map(r => r.innerText.split('\n')[0]));
+  await page.click('#colors .colr:nth-child(2) [data-swi="0"] [data-a="cplight"][data-v="shade"]');
+  await page.click('#colors .colr:nth-child(2) [data-swi="1"] [data-a="cplight"][data-v="sun"]');
+  const lts = await page.evaluate(() => [window.XLStudio.S.colors[1].photoLight, window.XLStudio.S.colors[1].swatches[1].light]);
+  check(17, JSON.stringify(rows.map(x => x.toLowerCase())) === '["photo 1 taken in","photo 2 taken in"]' && JSON.stringify(lts) === '["shade","sun"]', 'with two photos, each one has its own light (photo 1 shade, photo 2 sun) ' + JSON.stringify([rows, lts]));
+  await page.evaluate(() => document.querySelector('#colors .colr:nth-child(2) [data-swi]').scrollIntoView({ block: 'center' }));
+  await page.screenshot({ path: path.join(SHOTS, 'build-photolights-ipad.png') });
   check(16, /add 2-3 photos at different angles/i.test(ask2) && !/add 2-3 photos at different angles/i.test(ask3), 'a color-shift film with one photo asks for more angles; the hint goes once there are two');
   await page.click('#colors .colr:nth-child(2) [data-a="cplight"][data-v="shade"]');
   const roles = await page.evaluate(() => window.XLStudio.S.colors.map(c => [c.role, c.where, c.finish]));
@@ -174,7 +182,7 @@ try {
   check(6, JSON.stringify(tiles) === '["Exterior 1|shade","Interior 1 - Day|","Interior 1 - Night|"]' && oa.length === 3, 'renders: each exterior photo in each light, the interior by day and at night ' + JSON.stringify(tiles));
   const ex = oa.find(x => /custom paint protection film design/.test(x.prompt)), inD = oa.find(x => /interior/.test(x.prompt) && !/It is night/.test(x.prompt)), inN = oa.find(x => /It is night/.test(x.prompt));
   check(7, ex && ex.imgs === 5 && /2008 Volvo C30 T5/.test(ex.prompt) && /Base color: wrap every painted body panel not named below in GSWF Satin White GSWF-CG-124S/.test(ex.prompt)
-    && /Accent: roof, mirrors and the side sections in the design in Paltrix Phantom White to Gold 1003-H-W07 \(its samples are images 4 and 5 - the same film photographed at different angles/.test(ex.prompt) && /Image 2 is a design concept that shows WHERE the accent film goes/.test(ex.prompt)
+    && /Accent: roof, mirrors and the side sections in the design in Paltrix Phantom White to Gold 1003-H-W07 \(its samples are image 4 \(open shade\) and image 5 \(direct sun\) - the same film photographed at different angles/.test(ex.prompt) && /Take the true base color and how light or dark it is from the shade \/ overcast photos/.test(ex.prompt) && /Image 2 is a design concept that shows WHERE the accent film goes/.test(ex.prompt)
     && /Brake calipers and exhaust tips: .* in Paltrix Milan Gold 1004-J-G07/.test(ex.prompt) && /open shade/.test(ex.prompt) && /Wheels: replace the wheels with the wheel shown in image 3 - its exact spoke design, spoke count, lip and center cap, in Gloss white/.test(ex.prompt) && !/wheels, tires, glass/.test(ex.prompt) && /ignore any text, labels, swatch boxes/.test(ex.prompt),
     'exterior: real photo + design layout + accent sample; every film in its place with its code ' + (ex ? ex.imgs + ' imgs' : 'none'));
   check(8, inD && inN && inD.imgs === 3 && /All white leather/.test(inD.prompt) && /White adjustable bucket seats/.test(inD.prompt) && /waterfall center stack .* Phantom White to Gold/.test(inD.prompt) && !/Milan Gold|GSWF/.test(inD.prompt)
@@ -199,7 +207,7 @@ try {
   await page.waitForFunction(() => /^Saved /.test(document.getElementById('proj-st').textContent), null, { timeout: 10000 });
   let saved = {};
   for (let k = 0; k < 40; k++) { const e = [...store.m.entries()].find(([x]) => x.startsWith('proj/')); saved = e ? JSON.parse(e[1]) : {}; if (saved.build && saved.build.interior && saved.build.interior.on && saved.build.car) break; await page.waitForTimeout(250); }
-  check(12, saved.kind === 'build' && saved.build.car === '2008 Volvo C30 T5' && saved.build.wheels === 'Gloss white' && saved.build.design && saved.build.design.key && saved.build.rims && saved.build.rims.key && Object.values(saved.build.roles).sort().join(',') === 'ext,int' && saved.colors[2].role === 'parts' && /side sections/.test(saved.colors[1].where),
+  check(12, saved.kind === 'build' && saved.build.car === '2008 Volvo C30 T5' && saved.build.wheels === 'Gloss white' && saved.build.design && saved.build.design.key && saved.build.rims && saved.build.rims.key && Object.values(saved.build.roles).sort().join(',') === 'ext,int' && saved.colors[2].role === 'parts' && saved.colors[1].swatches[1].light === 'sun' && /side sections/.test(saved.colors[1].where),
     'the build (car, references, photo roles, film roles and places, interior) saves with the project');
   // phone
   const pp = await open({ width: 390, height: 844 }, true);
